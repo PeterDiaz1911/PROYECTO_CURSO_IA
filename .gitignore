@@ -1,0 +1,9 @@
+target/
+.idea/
+.vscode/settings.json
+*.iml
+.env
+node_modules/
+.next/
+out/
+coverage/

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --ink: #17211f; --forest: #184c42; --lime: #b6dc66; --cream: #f4f1e7; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f4f1e7; color: var(--ink); font-family: "Trebuchet MS", sans-serif; }
+button, input { font: inherit; }
+::selection { background: #b6dc66; color: #17211f; }
+.grid-paper { background-image: linear-gradient(rgba(23,33,31,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(23,33,31,.045) 1px, transparent 1px); background-size: 32px 32px; }
+.fade-up { animation: fade-up .65s ease both; }
+.delay-1 { animation-delay: .08s; } .delay-2 { animation-delay: .16s; } .delay-3 { animation-delay: .24s; }
+@keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

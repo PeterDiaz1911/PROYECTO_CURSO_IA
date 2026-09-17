@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: trazabilidad-agroexportadora
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/agroexport}
+    username: ${DB_USERNAME:agroexport}
+    password: ${DB_PASSWORD:agroexport}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: never
+
+server:
+  port: ${PORT:8080}
+
+ai:
+  llm:
+    url: ${LLM_URL:}
+
+logging:
+  level:
+    org.springframework.security: INFO
