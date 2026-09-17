@@ -40,10 +40,10 @@ export function useRealtimeLotes() {
 
     const channel = supabase
       .channel("lotes-cosecha-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "lotes_cosecha" }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "lotes_cosecha" }, (payload: { new: unknown }) => {
         addOrUpdateLote(mapRow(payload.new as LoteRow));
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lotes_cosecha" }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lotes_cosecha" }, (payload: { new: unknown }) => {
         addOrUpdateLote(mapRow(payload.new as LoteRow));
       })
       .subscribe();

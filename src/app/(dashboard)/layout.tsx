@@ -42,6 +42,8 @@ function DashboardShell({ children }: { children: ReactNode }) {
   const activeTab = searchParams.get("tab");
 
   useEffect(() => {
+    const cookieRole = document.cookie.split("; ").find((cookie) => cookie.startsWith("nativa-role="))?.split("=")[1] as UserRole | undefined;
+    if (cookieRole === "ADMIN" || cookieRole === "SUPERVISOR" || cookieRole === "OPERADOR") setRole(cookieRole);
     const stored = window.localStorage.getItem("nativa-auth");
     if (!stored) return;
     try {

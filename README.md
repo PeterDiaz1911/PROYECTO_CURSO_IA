@@ -24,6 +24,10 @@ Health check: `GET /api/health`
 
 Configura `DATABASE_URL` con la cadena SSL de tu BaaS PostgreSQL. `LLM_API_KEY` es opcional; sin ella el asistente usa reglas deterministas.
 
+## Supabase y Gemini
+
+Ejecuta `database/supabase-schema.sql` en el SQL Editor de Supabase y configura Google OAuth con callback `/auth/callback`. Añade `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `GEMINI_API_KEY` en `.env.local`. El middleware usa la cookie `nativa-role` para aislar `/gerente`, `/packing` y `/campo`.
+
 ## Vistas RBAC
 
 - `/campo`: operación del Ingeniero Agrónomo.

@@ -1,52 +1,37 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import type { UserRole } from "@/store/useTraceabilityStore";
 
-const SESSION_COOKIE = "nativa_session";
-
-function getSessionSecret(): Uint8Array | null {
-  const secret = process.env.AUTH_SECRET;
-  return secret && secret.length >= 32 ? new TextEncoder().encode(secret) : null;
-}
-
-function getClientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? request.headers.get("x-real-ip")
-    ?? "unknown";
-}
-
-// Replace this in production with a shared Redis/Upstash rate-limit lookup.
-function isIpLocked(_ip: string): boolean {
-  return false;
-}
+const roleHome: Record<UserRole, string> = { ADMIN: "/gerente", SUPERVISOR: "/packing", OPERADOR: "/campo" };
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
-    const ip = getClientIp(request);
-    const session = request.cookies.get(SESSION_COOKIE)?.value;
-    const secret = getSessionSecret();
-    let authenticated = false;
-    if (!isIpLocked(ip) && session && secret) {
-      try {
-        await jwtVerify(session, secret);
-        authenticated = true;
-      } catch {
-        authenticated = false;
-      }
-    }
+  let response = NextResponse.next({ request });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  let role = request.cookies.get("nativa-role")?.value as UserRole | undefined;
 
-    if (isIpLocked(ip)) {
-      return NextResponse.json({ error: "IP temporalmente bloqueada" }, { status: 429 });
-    }
-    if (!authenticated) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  if (url && key) {
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookies) => cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options)),
+      },
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user && (request.nextUrl.pathname.startsWith("/gerente") || request.nextUrl.pathname.startsWith("/packing") || request.nextUrl.pathname.startsWith("/campo"))) return NextResponse.redirect(new URL("/login", request.url));
+    role = role ?? (user?.user_metadata?.rol as UserRole | undefined);
   }
 
-  const response = NextResponse.next();
+  const path = request.nextUrl.pathname;
+  const requestedRole: UserRole | null = path.startsWith("/gerente") ? "ADMIN" : path.startsWith("/packing") ? "SUPERVISOR" : path.startsWith("/campo") ? "OPERADOR" : null;
+  if (requestedRole && !role) return NextResponse.redirect(new URL("/login", request.url));
+  if (requestedRole && role && requestedRole !== role) return NextResponse.redirect(new URL(roleHome[role], request.url));
+  if (path === "/login" && role) return NextResponse.redirect(new URL(roleHome[role], request.url));
+
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   return response;
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/api/:path*"] };
+export const config = { matcher: ["/login", "/gerente/:path*", "/packing/:path*", "/campo/:path*"] };
