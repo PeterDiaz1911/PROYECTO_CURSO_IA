@@ -13,7 +13,7 @@ import { useTraceabilityStore, type Destination } from "@/store/useTraceabilityS
 function PackingWorkspace() {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "recepcion";
-  useRealtimeLotes();
+  const { loading: loadingLotes, error: lotesError } = useRealtimeLotes();
   const lotes = useTraceabilityStore((state) => state.lotesCosecha);
   const activeLote = useTraceabilityStore((state) => state.activeLote);
   const documentos = useTraceabilityStore((state) => state.documentos);
@@ -33,7 +33,7 @@ function PackingWorkspace() {
     }
   }
 
-  return <div className="grid grid-cols-1 gap-6 lg:grid-cols-12"><section className="col-span-1 lg:col-span-9"><div className="mb-6"><p className="text-xs font-bold uppercase tracking-[.18em] text-[#C9603F]">Jefe de Packing</p><h1 className="mt-2 text-3xl font-bold">Gestión de empaque</h1><p className="mt-2 text-sm text-gray-500">Vista activa: {tab} · navegación sin recarga.</p></div>{renderTab()}</section><aside className="col-span-1 lg:col-span-3"><IAValidadorPacking /></aside></div>;
+  return <div className="grid grid-cols-1 gap-6 lg:grid-cols-12"><section className="col-span-1 lg:col-span-9"><div className="mb-6"><p className="text-xs font-bold uppercase tracking-[.18em] text-[#C9603F]">Jefe de Packing</p><h1 className="mt-2 text-3xl font-bold">Gestión de empaque</h1><p className="mt-2 text-sm text-gray-500">Vista activa: {tab} · navegación sin recarga.</p></div>{loadingLotes && <p className="mb-4 text-sm text-gray-500">Cargando lotes desde Supabase...</p>}{lotesError && <p role="alert" className="mb-4 text-sm font-semibold text-red-600">{lotesError}</p>}{renderTab()}</section><aside className="col-span-1 lg:col-span-3"><IAValidadorPacking /></aside></div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="border border-gray-100 bg-gray-50 p-5"><p className="text-xs text-gray-500">{label}</p><p className="mt-2 text-2xl font-bold text-[#1B4332]">{value}</p></div>; }

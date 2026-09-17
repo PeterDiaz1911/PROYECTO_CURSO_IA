@@ -1,52 +1,86 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import type { UserRole } from "@/store/useTraceabilityStore";
 
-const SESSION_COOKIE = "nativa_session";
+const roleHome: Record<UserRole, string> = {
+  ADMIN: "/gerente",
+  SUPERVISOR: "/packing",
+  OPERADOR: "/campo",
+};
 
-function getSessionSecret(): Uint8Array | null {
-  const secret = process.env.AUTH_SECRET;
-  return secret && secret.length >= 32 ? new TextEncoder().encode(secret) : null;
-}
-
-function getClientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? request.headers.get("x-real-ip")
-    ?? "unknown";
-}
-
-// Replace this in production with a shared Redis/Upstash rate-limit lookup.
-function isIpLocked(_ip: string): boolean {
-  return false;
+function isUserRole(value: unknown): value is UserRole {
+  return value === "ADMIN" || value === "SUPERVISOR" || value === "OPERADOR";
 }
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
-    const ip = getClientIp(request);
-    const session = request.cookies.get(SESSION_COOKIE)?.value;
-    const secret = getSessionSecret();
-    let authenticated = false;
-    if (!isIpLocked(ip) && session && secret) {
-      try {
-        await jwtVerify(session, secret);
-        authenticated = true;
-      } catch {
-        authenticated = false;
-      }
-    }
+  let response = NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+  const requestedRole: UserRole | null = path.startsWith("/gerencia") || path.startsWith("/gerente")
+    ? "ADMIN"
+    : path.startsWith("/packing")
+      ? "SUPERVISOR"
+      : path.startsWith("/campo")
+        ? "OPERADOR"
+        : null;
 
-    if (isIpLocked(ip)) {
-      return NextResponse.json({ error: "IP temporalmente bloqueada" }, { status: 429 });
-    }
-    if (!authenticated) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  const redirectWithCookies = (destination: string) => {
+    const redirectResponse = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
+  };
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    return requestedRole ? redirectWithCookies("/login") : response;
   }
 
-  const response = NextResponse.next();
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookiesToSet) => {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return requestedRole ? redirectWithCookies("/login") : response;
+  }
+
+  const { data: profile } = await supabase
+    .from("usuarios")
+    .select("rol")
+    .eq("id", user.id)
+    .single();
+  const role = isUserRole(profile?.rol) ? profile.rol : null;
+
+  if (requestedRole && !role) {
+    return redirectWithCookies("/login");
+  }
+
+  if (requestedRole && role && requestedRole !== role) {
+    return redirectWithCookies(roleHome[role]);
+  }
+
+  if (path === "/login" && role) {
+    return redirectWithCookies(roleHome[role]);
+  }
+
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   return response;
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/api/:path*"] };
+export const config = {
+  matcher: ["/login", "/gerencia(.*)", "/gerente(.*)", "/packing(.*)", "/campo(.*)"],
+};

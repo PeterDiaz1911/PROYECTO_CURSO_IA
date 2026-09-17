@@ -24,7 +24,7 @@ export type PackingOrder = {
 };
 
 export type HarvestLotRecord = ActiveLote & {
-  status: "En tránsito a Packing" | "Recibido" | "Procesando";
+  status: "En tránsito a Packing" | "Recibido" | "Procesando" | "Aprobado" | "Rechazado";
   fechaCosecha: string;
 };
 
@@ -47,6 +47,7 @@ type TraceabilityState = {
   setActiveLote: (lote: ActiveLote) => void;
   validateOrders: () => void;
   addOrUpdateLote: (lote: HarvestLotRecord) => void;
+  replaceLotes: (lotes: HarvestLotRecord[]) => void;
   addDocumento: (documento: DocumentRecord) => void;
   removeDocumento: (id: string) => void;
   clearStore: () => void;
@@ -90,9 +91,8 @@ export const useTraceabilityStore = create<TraceabilityState>((set) => ({
     lotesCosecha: state.lotesCosecha.some((current) => current.id === lote.id)
       ? state.lotesCosecha.map((current) => current.id === lote.id ? lote : current)
       : [lote, ...state.lotesCosecha],
-    activeLote: lote,
-    aiContext: { lote, destino: state.selectedDestination },
   })),
+  replaceLotes: (lotes) => set({ lotesCosecha: lotes }),
   addDocumento: (documento) => set((state) => ({ documentos: [documento, ...state.documentos] })),
   removeDocumento: (id) => set((state) => ({ documentos: state.documentos.filter((documento) => documento.id !== id) })),
   clearStore: () => set({ activeLote: initialLote, selectedDestination: "USA", orders: [], lotesCosecha: [], documentos: [], aiContext: { lote: initialLote, destino: "USA" } }),

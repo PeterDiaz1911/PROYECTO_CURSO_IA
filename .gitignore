@@ -3,6 +3,7 @@ target/
 .vscode/settings.json
 *.iml
 .env
+.env*.local
 node_modules/
 .next/
 out/
