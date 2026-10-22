@@ -38,6 +38,7 @@ function DashboardShell({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [role, setRole] = useState<UserRole>("ADMIN");
+  const [userName, setUserName] = useState("Usuario");
   const [mobileOpen, setMobileOpen] = useState(false);
   const activeTab = searchParams.get("tab");
 
@@ -47,8 +48,10 @@ function DashboardShell({ children }: { children: ReactNode }) {
     const stored = window.localStorage.getItem("nativa-auth");
     if (!stored) return;
     try {
-      const parsed = JSON.parse(stored) as { rol?: UserRole };
+      const parsed = JSON.parse(stored) as { rol?: UserRole; nombre?: string; usuario?: string };
       if (parsed.rol) setRole(parsed.rol);
+      if (parsed.nombre) setUserName(parsed.nombre);
+      else if (parsed.usuario) setUserName(parsed.usuario);
     } catch {
       window.localStorage.removeItem("nativa-auth");
     }
@@ -82,7 +85,7 @@ function DashboardShell({ children }: { children: ReactNode }) {
         <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
           <button type="button" aria-label="Abrir menú" onClick={() => setMobileOpen(true)} className="text-gray-700 lg:hidden"><Menu size={22} /></button>
           <div className="hidden sm:block"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#C9603F]">AGRÍCOLA DON RICARDO</p><p className="mt-1 text-xs text-gray-500">Operación Perú · Temporada 2026</p></div>
-          <div className="ml-auto flex items-center gap-4"><button type="button" aria-label="Ver notificaciones" className="relative text-gray-500 transition hover:text-[#1B4332]"><Bell size={19} /><span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#C9603F]" /></button><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold text-white">MR</div><span className="hidden text-sm font-bold text-gray-800 sm:inline">María Rojas</span></div>
+          <div className="ml-auto flex items-center gap-4"><button type="button" aria-label="Ver notificaciones" className="relative text-gray-500 transition hover:text-[#1B4332]"><Bell size={19} /><span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#C9603F]" /></button><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold text-white">{userName.charAt(0).toUpperCase()}</div><div className="hidden flex-col sm:flex"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C9603F]">Bienvenido</span><span className="text-sm font-bold text-gray-800">{userName}</span></div></div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>

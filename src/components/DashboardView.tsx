@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Bot, Check, ChevronDown, CircleAlert, Leaf, LogOut, Send, ShieldCheck, Truck, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const destinationRules: Record<Destination, { label: string; rule: string; lmr: 
 
 export function DashboardView() {
   const [role, setRole] = useState<Role>("ADMIN");
+  const [userName, setUserName] = useState("Usuario");
   const [destination, setDestination] = useState<Destination>("USA");
   const [orders, setOrders] = useState<Order[]>(ordersSeed);
   const [message, setMessage] = useState("");
@@ -43,8 +45,10 @@ export function DashboardView() {
     const storedAuth = window.localStorage.getItem("nativa-auth");
     if (!storedAuth) return;
     try {
-      const auth = JSON.parse(storedAuth) as { rol?: Role };
+      const auth = JSON.parse(storedAuth) as { rol?: Role; nombre?: string; usuario?: string };
       if (auth.rol) setRole(auth.rol);
+      if (auth.nombre) setUserName(auth.nombre);
+      else if (auth.usuario) setUserName(auth.usuario);
     } catch {
       window.localStorage.removeItem("nativa-auth");
     }
@@ -85,7 +89,7 @@ export function DashboardView() {
           </div>
           <div className="border-b border-green-800 px-6 py-5">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-green-200/60">Sesión activa</p>
-            <div className="mt-3 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold">MR</div><div><p className="text-sm font-bold">María Rojas</p><p className="text-xs text-green-100/60">{role}</p></div></div>
+            <div className="mt-3 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold">{userName.charAt(0).toUpperCase()}</div><div><p className="text-sm font-bold">{userName}</p><p className="text-xs text-green-100/60">{role}</p></div></div>
           </div>
           <nav className="space-y-1 px-3 py-7" aria-label="Navegación principal">
             <a href="#resumen" className="flex items-center gap-3 rounded-lg bg-[#B7D96B] px-3 py-3 text-sm font-bold text-[#1B4332]"><Leaf size={17} /> Panel de control</a>
@@ -100,10 +104,22 @@ export function DashboardView() {
           <header className="flex h-20 items-center justify-between border-b border-gray-200 bg-white px-5 lg:px-8">
             <button type="button" aria-label="Abrir menú" onClick={() => setMobileMenu(true)} className="text-gray-700 lg:hidden">☰</button>
             <div className="hidden sm:block"><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C9603F]">Agrícola Don Ricardo</p><p className="mt-1 text-xs text-gray-500">Operación Perú · Temporada 2026</p></div>
-            <div className="ml-auto flex items-center gap-4"><button type="button" aria-label="Notificaciones" className="relative text-gray-500 transition hover:text-[#1B4332]"><span className="text-lg">●</span><span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#C9603F]" /></button><div className="hidden h-7 w-px bg-gray-200 sm:block" /><div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold text-white">MR</div><span className="hidden text-sm font-bold text-gray-800 sm:inline">María Rojas</span></div></div>
+            <div className="ml-auto flex items-center gap-4"><button type="button" aria-label="Notificaciones" className="relative text-gray-500 transition hover:text-[#1B4332]"><span className="text-lg">●</span><span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#C9603F]" /></button><div className="hidden h-7 w-px bg-gray-200 sm:block" /><div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9603F] text-xs font-bold text-white">{userName.charAt(0).toUpperCase()}</div><motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, ease: "easeOut" }} className="hidden flex-col sm:flex"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#C9603F]">Bienvenido</span><span className="text-sm font-bold text-gray-800">{userName}</span></motion.div></div></div>
           </header>
 
           <div id="resumen" className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 min-h-[calc(100vh-5rem)]">
+            <motion.div
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="col-span-1 flex w-full items-center justify-between rounded-2xl border border-[#e9e7df] bg-gradient-to-r from-[#f7f5ef] via-white to-[#f0f6ea] px-5 py-4 shadow-sm lg:col-span-12"
+            >
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C9603F]">Bienvenido</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#1B4332] md:text-3xl">{userName}</h2>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1B4332] text-lg font-bold text-white shadow-md">{userName.charAt(0).toUpperCase()}</div>
+            </motion.div>
             <div className="col-span-1 flex min-w-0 flex-col gap-6 lg:col-span-12">
               <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C9603F]">Miércoles · 17 de septiembre, 2026</p><h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">Panel de Control de Trazabilidad</h1><p className="mt-2 text-sm text-gray-500">Supervisa la cadena de suministro y valida cada despacho con precisión.</p></div><div className="flex items-center gap-2 text-xs font-bold text-[#1B4332]"><span className="h-2 w-2 rounded-full bg-green-500" /> Sistema operativo · {role}</div></div>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
