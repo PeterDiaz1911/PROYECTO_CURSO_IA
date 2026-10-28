@@ -1,1 +1,4 @@
 project_id = "don-ricardo-curso-ia"
+
+[functions.asistente-ia]
+verify_jwt = false
