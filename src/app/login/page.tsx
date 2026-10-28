@@ -1,97 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Route } from "next";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowRight, Leaf, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Eye, EyeOff, Leaf, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { roleHome } from "@/features/auth/roles";
+import { authReturnUrl } from "@/lib/supabase/client";
+import { SessionStatus } from "@/features/auth/AuthGate";
 
-type Role = "ADMIN" | "SUPERVISOR" | "OPERADOR";
-const mockUsers = { gerente: { pass: "admin123", rol: "ADMIN" as const, nombre: "Gerente" }, packing: { pass: "pack123", rol: "SUPERVISOR" as const, nombre: "Jefe de Packing" }, agronomo: { pass: "agro123", rol: "OPERADOR" as const, nombre: "Ingeniero Agrónomo" } };
-const roleHome: Record<Role, string> = { ADMIN: "/gerente", SUPERVISOR: "/packing", OPERADOR: "/campo" };
-
-export default function LoginPage() {
-  const router = useRouter();
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [toast, setToast] = useState("");
-  const [toastSuccess, setToastSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-
+type Mode = "login" | "register" | "recover";
+export default function LoginPage() { return <Suspense fallback={<SessionStatus><p role="status">Cargando acceso...</p></SessionStatus>}><LoginContent /></Suspense>; }
+function LoginContent() {
+  const { client, session, profile, loading: restoring, error: profileError, reload, recovery, clearRecovery, signOut } = useAuth();
+  const router = useRouter(); const params = useSearchParams(); const reduce = useReducedMotion();
+  const reset = recovery || params.get("mode") === "reset";
+  const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState(""); const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false); const submitting = useRef(false);
+  const [error, setError] = useState(""); const [message, setMessage] = useState("");
+  const [cooldown, setCooldown] = useState(0);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "auth-failed") {
-      setToast("No se pudo completar el acceso con Google. Verifica la URL de retorno autorizada en Supabase y que tu usuario tenga un rol asignado.");
-    } else if (params.get("password-updated") === "1") {
-      setToast("Tu contraseña se actualizó correctamente.");
-      setToastSuccess(true);
-    }
-  }, []);
-
-  function persistRole(role: Role, nombre: string, usuario: string) {
-    document.cookie = `nativa-role=${role}; Path=/; Max-Age=28800; SameSite=Lax`;
-    localStorage.setItem("nativa-auth", JSON.stringify({ usuario, nombre, rol: role }));
-    router.push(roleHome[role] as Route);
+    if (!restoring && session && profile?.is_active && !reset) router.replace(roleHome[profile.rol]);
+  }, [restoring, session, profile, reset, router]);
+  useEffect(() => {
+    if (!cooldown) return;
+    const timer = window.setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
+  function changeMode(next: Mode) { setMode(next); setError(""); setMessage(""); setPassword(""); setConfirmation(""); }
+  function showError(cause: unknown) {
+    const authError = cause as { status?: number; code?: string; message?: string };
+    if (authError.status === 429 || authError.code?.includes("rate_limit")) {
+      setCooldown(60); setError("Se alcanzó el límite de solicitudes o correos. Espera antes de reintentar; la cuota de correo puede tardar más en restablecerse.");
+    } else if (authError.code === "invalid_credentials") setError("Correo o contraseña incorrectos.");
+    else if (authError.code === "email_not_confirmed") setError("Confirma tu correo antes de ingresar.");
+    else setError(authError.message ?? "No se pudo completar la solicitud.");
   }
-
-  async function handleGoogleLogin() {
-    setToast("");
-    setToastSuccess(false);
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) { setToast("Configura Supabase para habilitar Google."); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` } });
-    if (error) { setToast(error.message); setLoading(false); }
-  }
-
-  async function handlePasswordRecovery() {
-    setToast("");
-    setToastSuccess(false);
-    const email = user.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setToast("Escribe tu correo electrónico para enviarte el enlace de recuperación.");
-      return;
-    }
-
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setToast("Configura Supabase para recuperar la contraseña.");
-      return;
-    }
-
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/actualizar-password`,
-    });
-    setLoading(false);
-    if (error) {
-      setToast(`No se pudo enviar el enlace de recuperación: ${error.message}`);
-    } else {
-      setToast("Si existe una cuenta para ese correo, recibirás un enlace para actualizar la contraseña.");
-      setToastSuccess(true);
-    }
-  }
-
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setToast(""); setToastSuccess(false);
-    const supabase = getSupabaseBrowserClient();
-    if (supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: user, password: pass });
-      if (!error && data.user) {
-        const { data: profile } = await supabase.from("usuarios").select("rol, nombre").eq("id", data.user.id).single();
-        const role = profile?.rol as Role | undefined;
-        if (role) { persistRole(role, profile.nombre ?? data.user.email ?? user, user); return; }
+    event.preventDefault();
+    if (!client || submitting.current || cooldown) return;
+    setError(""); setMessage("");
+    if (reset && (!session || password !== confirmation)) { setError(!session ? "Abre el enlace de recuperación en este navegador para continuar." : "Las contraseñas no coinciden."); return; }
+    submitting.current = true; setBusy(true);
+    try {
+      if (reset) {
+        const { error: requestError } = await client.auth.updateUser({ password }); if (requestError) throw requestError;
+        clearRecovery(); setPassword(""); setConfirmation(""); setMessage("Contraseña actualizada.");
+        router.replace("/login");
+      } else if (mode === "login") {
+        const { error: requestError } = await client.auth.signInWithPassword({ email: email.trim(), password }); if (requestError) throw requestError;
+      } else if (mode === "register") {
+        const { error: requestError } = await client.auth.signUp({ email: email.trim(), password, options: { data: { nombre: name.trim() }, emailRedirectTo: authReturnUrl() } });
+        if (requestError) throw requestError;
+        setPassword(""); setMessage("Revisa tu correo para confirmar la cuenta. Gerencia debe habilitar tu acceso y asignarte un área.");
+      } else {
+        const { error: requestError } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo: authReturnUrl(true) });
+        if (requestError) throw requestError;
+        setMessage("Si existe una cuenta para ese correo, recibirás las instrucciones de recuperación.");
       }
-      setToast(error?.message ?? "No se encontró un rol asociado a este usuario."); setLoading(false); return;
-    }
-    const found = mockUsers[user as keyof typeof mockUsers];
-    if (!found || found.pass !== pass) { setToast("Usuario o contraseña incorrectos."); setLoading(false); return; }
-    persistRole(found.rol, found.nombre, user);
+    } catch (cause) { showError(cause); }
+    finally { submitting.current = false; setBusy(false); }
   }
-
-  return <main className="grid min-h-screen bg-stone-50 lg:grid-cols-2"><section className="relative hidden overflow-hidden bg-[#1B4332] lg:block"><div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1800&q=85')] bg-cover bg-center opacity-80" /><div className="absolute inset-0 bg-[#1B4332]/65" /><div className="relative flex h-full flex-col justify-between p-10 text-white xl:p-16"><div><p className="font-display text-3xl font-bold">don ricardo<span className="text-[#B7D96B]">.</span></p><p className="mt-2 text-[10px] font-bold uppercase tracking-[.25em] text-white/55">Agrícola Don Ricardo</p></div><div className="max-w-lg"><div className="mb-5 flex h-12 w-12 items-center justify-center bg-[#B7D96B] text-[#1B4332]"><Leaf size={24} /></div><h1 className="font-display text-5xl font-bold leading-[1.05]">La cosecha que llega más lejos.</h1><p className="mt-5 max-w-md text-sm leading-6 text-white/65">Controla la trazabilidad, valida la calidad y coordina cada despacho.</p></div><div className="flex items-center gap-2 text-xs text-white/50"><ShieldCheck size={15} className="text-[#B7D96B]" /> Acceso protegido con Supabase Auth</div></div></section><section className="flex items-center justify-center px-5 py-10 sm:px-10"><motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45 }} className="w-full max-w-md"><Card className="border-gray-100 bg-white shadow-sm"><CardHeader><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#C9603F]">Portal de operaciones</p><CardTitle className="mt-2 text-3xl">Bienvenido de vuelta</CardTitle><p className="mt-2 text-sm text-gray-500">Ingresa con tu cuenta corporativa.</p></CardHeader><CardContent><Button type="button" onClick={handleGoogleLogin} disabled={loading} className="w-full bg-white text-gray-800 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"><span className="font-bold text-blue-600">G</span> Continuar con Google</Button><div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-400"><span className="h-px flex-1 bg-gray-200" /> o acceso manual <span className="h-px flex-1 bg-gray-200" /></div><form onSubmit={submit} className="space-y-5"><label className="block text-xs font-bold text-gray-800">Correo o usuario<Input value={user} onChange={(event) => setUser(event.target.value)} className="mt-2" placeholder="correo@empresa.com" autoComplete="username" /></label><label className="block text-xs font-bold text-gray-800">Contraseña<div className="relative mt-2"><LockKeyhole size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><Input value={pass} onChange={(event) => setPass(event.target.value)} className="pl-9" placeholder="••••••••" type="password" autoComplete="current-password" /></div></label>{toast && <p role={toastSuccess ? "status" : "alert"} className={`text-xs font-semibold ${toastSuccess ? "text-green-700" : "text-red-600"}`}>{toast}</p>}<Button type="submit" disabled={loading} className="w-full bg-[#1B4332] hover:bg-[#163728]">{loading ? "Validando..." : "Ingresar al panel"}<ArrowRight size={16} /></Button></form><button type="button" onClick={handlePasswordRecovery} disabled={loading} className="mt-4 w-full text-center text-xs font-semibold text-[#1B4332] hover:underline disabled:opacity-50">¿Olvidaste tu contraseña?</button><p className="mt-6 text-center text-[11px] text-gray-400">Demo: gerente/admin123 · packing/pack123 · agronomo/agro123</p></CardContent></Card></motion.div></section></main>;
+  async function googleLogin() {
+    if (!client || busy) return;
+    setBusy(true); setError("");
+    try {
+      const { error: requestError } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: authReturnUrl() } });
+      if (requestError) throw requestError;
+    } catch (cause) { showError(cause); setBusy(false); }
+  }
+  const title = reset ? "Nueva contraseña" : mode === "register" ? "Solicita tu acceso" : mode === "recover" ? "Recupera tu cuenta" : "Bienvenido de vuelta";
+  const pending = session && !reset && !restoring && (!profile || !profile.is_active);
+  return <main className="grid min-h-screen bg-stone-50 lg:grid-cols-2">
+    <section className="relative hidden overflow-hidden bg-[#1B4332] lg:block"><div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1800&q=85')] bg-cover bg-center opacity-70" /><div className="absolute inset-0 bg-[#1B4332]/65" /><div className="relative flex h-full min-h-screen flex-col justify-between p-10 text-white xl:p-16"><div><p className="font-display text-3xl font-bold">don ricardo<span className="text-[#B7D96B]">.</span></p><p className="mt-2 text-[10px] font-bold uppercase tracking-[.25em] text-white/60">Agrícola Don Ricardo</p></div><div className="max-w-lg"><Leaf size={32} className="mb-6 text-[#B7D96B]" /><h1 className="font-display text-5xl font-bold leading-[1.05]">La cosecha que llega más lejos.</h1><p className="mt-5 max-w-md text-sm leading-6 text-white/75">Accede a tu área de Campo, Packing o Gerencia y continúa la trazabilidad de cada lote.</p></div><div className="flex items-center gap-2 text-xs text-white/60"><ShieldCheck size={15} className="text-[#B7D96B]" /> Identidad y permisos con Supabase Auth</div></div></section>
+    <section className="flex items-center justify-center px-5 py-10 sm:px-10"><motion.div initial={{ opacity: 0, y: reduce ? 0 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduce ? 0 : .4 }} className="w-full max-w-md"><Card className="rounded-2xl border-gray-100 bg-white shadow-sm"><CardHeader><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#C9603F]">Portal de operaciones</p><CardTitle className="mt-2 text-3xl">{title}</CardTitle><p className="mt-2 text-sm text-gray-500">{reset ? "Elige una contraseña nueva para tu cuenta." : "Ingresa con el correo de tu cuenta de Agrícola Don Ricardo."}</p></CardHeader><CardContent>
+      {!client ? <p role="alert" className="text-sm text-red-700">Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY del proyecto Supabase independiente de IA.</p> : restoring ? <p role="status">Comprobando sesión...</p> : pending ? <div><p role="status" className="text-sm text-gray-600">{profileError || "Tu cuenta está pendiente de habilitación por Gerencia. El registro no concede acceso operativo automáticamente."}</p><div className="mt-5 flex gap-4"><button className="font-bold text-green-900" onClick={reload}>Revisar acceso</button><button onClick={() => void signOut().catch(showError)}>Cerrar sesión</button></div></div> : <>
+      {process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === "true" && !reset && mode === "login" && <><Button type="button" onClick={() => void googleLogin()} disabled={busy} className="mb-5 w-full bg-white text-gray-800 ring-1 ring-gray-200 hover:bg-gray-50">Continuar con Google</Button><p className="mb-5 text-center text-xs text-gray-400">O utiliza tu correo</p></>}
+      <form onSubmit={submit} className="space-y-5" aria-busy={busy}><fieldset disabled={busy} className="space-y-5">
+        {mode === "register" && !reset && <label className="block text-xs font-bold">Nombre completo<Input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} maxLength={120} autoComplete="name" className="mt-2" /></label>}
+        {!reset && <label className="block text-xs font-bold">Correo electrónico<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={320} autoComplete="email" className="mt-2" placeholder="nombre@empresa.com" /></label>}
+        {(reset || mode !== "recover") && <label className="block text-xs font-bold">Contraseña<div className="relative mt-2"><LockKeyhole size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><Input value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} maxLength={128} className="pl-9 pr-10" type={visible ? "text" : "password"} autoComplete={!reset && mode === "login" ? "current-password" : "new-password"} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={visible} onClick={() => setVisible((value) => !value)}>{visible ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>}
+        {reset && <label className="block text-xs font-bold">Confirmar contraseña<Input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" required minLength={8} className="mt-2" /></label>}
+      </fieldset><Button type="submit" disabled={busy || cooldown > 0 || (reset && !session)} className="w-full bg-[#1B4332] hover:bg-[#163728]">{cooldown ? `Reintentar en ${cooldown} s` : busy ? "Procesando..." : reset ? "Guardar contraseña" : mode === "register" ? "Crear cuenta" : mode === "recover" ? "Enviar enlace" : "Ingresar al panel"}<ArrowRight size={16} /></Button></form>
+      {!reset && <div className="mt-6 flex flex-wrap justify-center gap-4 text-xs text-green-900"><button disabled={busy} onClick={() => changeMode(mode === "login" ? "recover" : "login")}>{mode === "login" ? "Olvidé mi contraseña" : "Volver al acceso"}</button>{mode === "login" && <button disabled={busy} onClick={() => changeMode("register")}>Solicitar cuenta</button>}</div>}
+      </>}{error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</p>}{message && <p role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-xs text-green-800">{message}</p>}
+      <p className="mt-6 text-center text-[11px] text-gray-400">Los roles se asignan desde la base de datos por un administrador autorizado.</p>
+    </CardContent></Card></motion.div></section>
+  </main>;
 }

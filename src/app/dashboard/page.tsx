@@ -1,5 +1,2 @@
-import { redirect } from "next/navigation";
-
-export default function DashboardPage() {
-	redirect("/gerente");
-}
+import { SessionRedirect } from "@/features/auth/SessionRedirect";
+export default function DashboardPage() { return <SessionRedirect />; }

@@ -1,37 +1,56 @@
-# Sistema Inteligente Integrador de Trazabilidad
+# Agrícola Don Ricardo — Proyecto del curso de IA
 
-SaaS B2B agroexportador para control de lotes, calidad, cumplimiento y despacho.
+Aplicación de trazabilidad agroexportadora con tres áreas existentes: Campo (`OPERADOR`), Packing (`SUPERVISOR`) y Gerencia (`ADMIN`). Se conserva el tema agrícola y sus vistas. La autenticación usa **un proyecto Supabase independiente de PROYECTO_BIGDATA**.
 
-## Stack
+## Qué incorpora esta entrega
 
-- Next.js App Router, React y TypeScript
-- Tailwind CSS
-- PostgreSQL BaaS mediante Neon Serverless
-- BCrypt coste 12, TOTP y bloqueo de IP después de 5 intentos fallidos
-- API Route de asistente contextual con reglas fitosanitarias y LLM opcional
+- Acceso real por correo y contraseña, solicitud de cuenta, confirmación, recuperación y cambio de contraseña.
+- Sesión restaurada al recargar y cierre de sesión real.
+- Perfil en `public.usuarios`, rol obtenido de la base y bloqueo de cuentas no habilitadas.
+- Alta pública siempre como `OPERADOR` **inactivo**; Gerencia habilita y asigna roles mediante el procedimiento administrativo documentado.
+- RLS para perfiles y tablas agrícolas existentes; los permisos no dependen de cookies editables.
+- Exportación estática y workflow para GitHub Pages bajo `/PROYECTO_CURSO_IA/`.
 
-## Desarrollo
+Esta entrega **no completa ni reemplaza las funcionalidades agrícolas existentes**. Algunas vistas, documentos, despachos e interacciones de asistentes todavía usan datos locales o de demostración. Autenticar la interfaz no los convierte en flujos persistentes. No se copian cuentas ni datos de SERPOST.
 
-```bash
-npm install
+## Inicio local
+
+Node.js 22.18 o superior y npm:
+
+```powershell
+npm ci
 Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Abre `http://localhost:3000`.
+En `.env.local`, completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` del **nuevo** proyecto Supabase. Usa la clave publicable o anon legacy, nunca service_role. Abre `http://localhost:3000/`.
 
-Health check: `GET /api/health`
+## Base de datos y usuarios
 
-Configura `DATABASE_URL` con la cadena SSL de tu BaaS PostgreSQL. `LLM_API_KEY` es opcional; sin ella el asistente usa reglas deterministas.
+Sigue [la guía de Supabase y Pages](docs/supabase-auth-pages.md). En una base nueva, aplica en orden:
 
-## Supabase y Gemini
+1. `supabase/migrations/202610280000_base_agricola.sql`
+2. `supabase/migrations/202610280001_auth_don_ricardo.sql`
+3. `supabase/migrations/202610280002_workflow_access.sql`
 
-Ejecuta `database/supabase-schema.sql` en el SQL Editor de Supabase y configura Google OAuth con callback `/auth/callback`. Añade `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `GEMINI_API_KEY` en `.env.local`. El middleware usa la cookie `nativa-role` para aislar `/gerente`, `/packing` y `/campo`.
+No ejecutes también `database/schema.sql` (esquema histórico Neon) ni reinstales el archivo histórico `database/supabase-schema.sql`. Si el proyecto ya tiene datos, respáldalo y revisa la diferencia de esquema y políticas antes de aplicar cambios; no lo reinicies ni borres tablas.
 
-## Vistas RBAC
+## Validación
 
-- `/campo`: operación del Ingeniero Agrónomo.
-- `/packing`: recepción y gestión del Supervisor.
-- `/gerencia`: supervisión y autorización del Administrador.
+```powershell
+npm run lint
+npm run typecheck
+npm test
+$env:DEPLOY_TARGET='github-pages'
+npm run build
+```
 
-Para activar la bandeja realtime de Packing configura `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`. En Supabase habilita Realtime para `public.lotes_cosecha` y agrega la tabla a la publicación `supabase_realtime`.
+Las pruebas de permisos de PostgreSQL están en `supabase/tests/auth_permissions.sql`. Deben ejecutarse contra un Supabase de desarrollo y terminan con `ROLLBACK`. No se consideran aprobadas hasta ejecutarlas en ese entorno.
+
+## GitHub Pages
+
+URL prevista: `https://peterdiaz1911.github.io/PROYECTO_CURSO_IA/`.
+
+En este repositorio, configura Actions Variables `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`, luego Settings → Pages → Source → GitHub Actions. No reutilices las variables del otro repositorio. El workflow valida, compila y publica `out/` después de actualizar `main`.
+
+Los endpoints anteriores que requieren servidor Next.js se conservan fuera de la aplicación en `legacy-server/`. Pages no ejecuta `/api/asistente`, `/api/gemini`, Server Actions ni middleware. Los asistentes locales de las pantallas existentes permanecen como estaban; las claves de LLM jamás se exponen al frontend. Restaurar un asistente remoto requiere otro trabajo de backend autenticado.

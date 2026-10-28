@@ -28,6 +28,7 @@ export function useRealtimeLotes() {
     setError(null);
 
     const applyRealtimeRow = (value: unknown) => {
+      if (!active) return;
       if (!isLoteRow(value)) {
         setError("Supabase recibió un lote con un formato no válido.");
         return;
@@ -55,7 +56,7 @@ export function useRealtimeLotes() {
       });
 
     async function loadLotes() {
-      const { data, error: loadError } = await supabase
+      const { data, error: loadError } = await supabase!
         .from("lotes")
         .select("*")
         .order("created_at", { ascending: false });

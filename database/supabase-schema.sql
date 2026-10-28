@@ -1,3 +1,5 @@
+-- REFERENCIA HISTÓRICA. Para instalaciones nuevas use las tres migraciones de supabase/migrations en orden.
+-- Las políticas de este archivo se reemplazan por 202610280002_workflow_access.sql.
 -- Supabase schema for the three-role agroexport workflow.
 create extension if not exists pgcrypto;
 
