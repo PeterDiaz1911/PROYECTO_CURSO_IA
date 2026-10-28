@@ -1,5 +1,2 @@
-import { redirect } from "next/navigation";
-
-export default function Home() {
-  redirect("/gerente");
-}
+import { SessionRedirect } from "@/features/auth/SessionRedirect";
+export default function Home() { return <SessionRedirect />; }

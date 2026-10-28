@@ -7,6 +7,7 @@ import { ArrowLeft, KeyRound, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 async function prepareRecoverySession(): Promise<string | null> {
@@ -19,16 +20,11 @@ async function prepareRecoverySession(): Promise<string | null> {
   const code = callbackUrl.searchParams.get("code");
   const recoveryType = new URLSearchParams(callbackUrl.hash.slice(1)).get("type") === "recovery";
 
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) return `El enlace de recuperación no es válido o ya venció: ${error.message}`;
-    window.history.replaceState({}, "", callbackUrl.pathname);
-    return null;
-  }
-
+  // The shared client processes PKCE once through detectSessionInUrl.
+  // Do not exchange the same code a second time from this compatibility page.
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) return `No se pudo validar el enlace: ${error.message}`;
-  if (!recoveryType || !session) {
+  if ((!recoveryType && !code) || !session) {
     return "El enlace de recuperación no es válido o ya venció. Solicita uno nuevo desde el inicio de sesión.";
   }
 
@@ -38,6 +34,7 @@ async function prepareRecoverySession(): Promise<string | null> {
 
 export default function ActualizarPasswordPage() {
   const router = useRouter();
+  const { clearRecovery } = useAuth();
   const initialization = useRef<Promise<string | null> | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [nuevaPassword, setNuevaPassword] = useState("");
@@ -58,7 +55,7 @@ export default function ActualizarPasswordPage() {
         return;
       }
       setReady(true);
-    });
+    }).catch(() => { if (active) setError("No se pudo validar el enlace. Solicita uno nuevo desde el inicio de sesión."); });
 
     return () => {
       active = false;
@@ -95,6 +92,7 @@ export default function ActualizarPasswordPage() {
       return;
     }
 
+    clearRecovery();
     setSuccess("Contraseña actualizada. Te estamos llevando al inicio de sesión.");
     redirectTimer.current = setTimeout(() => {
       router.replace("/login?password-updated=1");
