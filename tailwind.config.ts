@@ -5,11 +5,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#17211f",
-        forest: "#184c42",
-        lime: "#b6dc66",
-        cream: "#f4f1e7",
-        rust: "#c9603f",
+        ink: "#17251D",
+        forest: "#1B4332",
+        lime: "#B7D96B",
+        cream: "#F5F8F4",
+        rust: "#A4472F",
       },
       fontFamily: {
         display: ["var(--font-space-grotesk)"],

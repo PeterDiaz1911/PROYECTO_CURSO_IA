@@ -19,7 +19,7 @@ NEXT_PUBLIC_ENABLE_GOOGLE_AUTH=false
 
 No copies el archivo de variables de Big Data. No incluyas passwords de PostgreSQL ni claves administrativas. `.env.local` está ignorado por Git.
 
-3. En un proyecto vacío ejecuta las tres migraciones, por orden de nombre, en SQL Editor. Alternativamente, con Supabase CLI:
+3. En un proyecto vacío ejecuta las cuatro migraciones, por orden de nombre, en SQL Editor. Alternativamente, con Supabase CLI:
 
 ```powershell
 npx supabase login
@@ -82,6 +82,29 @@ returning u.email,u.rol,u.is_active;
 Usa `OPERADOR` para Campo y `ADMIN` para Gerencia. La consulta debe devolver una fila. Después del cambio, cierra sesión y vuelve a entrar o usa Revisar acceso. Para revocar operaciones, establece `is_active=false`; RLS lo aplica incluso si la persona conserva un token válido. El perfil propio sigue visible para mostrar el bloqueo.
 
 La vista Gestión de Usuarios del proyecto original sigue siendo un espacio de interfaz; esta entrega no incorpora un CRUD de privilegios. Las habilitaciones se realizan con acceso administrativo de Supabase, nunca exponiendo service_role.
+
+## Perfil personal y panel de Gerencia
+
+Después de las migraciones de Auth y workflow, aplica `supabase/migrations/202610280003_sprint_2_profile_dashboard.sql` desde SQL Editor o mediante `npx supabase db push`. Esta migración:
+
+- Añade teléfono, descripción y ruta de avatar a `public.usuarios` sin conceder escrituras directas a clientes.
+- Expone `actualizar_perfil_propio`, que usa `auth.uid()`, exige cuenta activa y validada, y solo actualiza nombre y campos personales permitidos. Correo, rol, activación e identidad quedan fuera de la operación.
+- Crea el bucket privado `user-avatars`, limita formato a JPEG/PNG/WebP y tamaño a 2 MB, y restringe las rutas y políticas al usuario propietario.
+- Expone `gerencia_dashboard`, que rechaza roles distintos de `ADMIN` y calcula lotes/documentos con los filtros de período y estado.
+
+Las imágenes se almacenan en `user-avatars/<auth.uid()>/<uuid>.<jpg|png|webp>`. La aplicación persiste solo esa ruta y crea enlaces firmados temporales. Si se reemplaza una imagen, se guarda primero la nueva ruta y después se retira el objeto anterior; si falla la limpieza, la interfaz informa que requiere atención.
+
+La aplicación de esta migración y las pruebas integradas dependen del proyecto Supabase de desarrollo y quedan pendientes hasta ejecutar los pasos:
+
+1. Revisa el proyecto y backup; confirma que corresponda a Agrícola Don Ricardo y que las migraciones anteriores estén aplicadas.
+2. Ejecuta el archivo de migración `202610280003_sprint_2_profile_dashboard.sql` en SQL Editor.
+3. En Table Editor confirma las columnas nuevas y que `user-avatars` figure como privado con 2 MB y solo los tres MIME permitidos.
+4. Con cuentas activas de los tres roles, abre el avatar y guarda/cancela perfil; prueba una imagen válida, reemplazo y eliminación.
+5. Como cada cuenta autenticada, intenta cambiar por RPC el `rol`, `is_active`, correo o perfil de otra persona: esas operaciones deben fallar o no existir. Como `OPERADOR` y `SUPERVISOR`, invoca directamente `gerencia_dashboard`: debe devolver `admin_required`.
+6. Como `ADMIN`, compara los lotes y documentos de la RPC con las tablas visibles y repite período/estado. Prueba también una cuenta desactivada.
+7. Revisa políticas y restricciones de Storage en Supabase Dashboard; no uses la clave `service_role` en el navegador.
+
+No se ejecutó ni se declara aplicada esta migración desde este entorno. Las pruebas locales validan cálculos y validación de datos, no reemplazan las pruebas RLS/Storage en un proyecto Supabase.
 
 ## Publicación
 
