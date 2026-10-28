@@ -19,11 +19,16 @@ export default function LoginPage() {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [toast, setToast] = useState("");
+  const [toastSuccess, setToastSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("error") === "auth-failed") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "auth-failed") {
       setToast("No se pudo completar el acceso con Google. Verifica la URL de retorno autorizada en Supabase y que tu usuario tenga un rol asignado.");
+    } else if (params.get("password-updated") === "1") {
+      setToast("Tu contraseña se actualizó correctamente.");
+      setToastSuccess(true);
     }
   }, []);
 
@@ -35,6 +40,7 @@ export default function LoginPage() {
 
   async function handleGoogleLogin() {
     setToast("");
+    setToastSuccess(false);
     const supabase = getSupabaseBrowserClient();
     if (!supabase) { setToast("Configura Supabase para habilitar Google."); return; }
     setLoading(true);
@@ -42,8 +48,36 @@ export default function LoginPage() {
     if (error) { setToast(error.message); setLoading(false); }
   }
 
+  async function handlePasswordRecovery() {
+    setToast("");
+    setToastSuccess(false);
+    const email = user.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setToast("Escribe tu correo electrónico para enviarte el enlace de recuperación.");
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setToast("Configura Supabase para recuperar la contraseña.");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/actualizar-password`,
+    });
+    setLoading(false);
+    if (error) {
+      setToast(`No se pudo enviar el enlace de recuperación: ${error.message}`);
+    } else {
+      setToast("Si existe una cuenta para ese correo, recibirás un enlace para actualizar la contraseña.");
+      setToastSuccess(true);
+    }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setToast("");
+    event.preventDefault(); setLoading(true); setToast(""); setToastSuccess(false);
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({ email: user, password: pass });
@@ -59,5 +93,5 @@ export default function LoginPage() {
     persistRole(found.rol, found.nombre, user);
   }
 
-  return <main className="grid min-h-screen bg-stone-50 lg:grid-cols-2"><section className="relative hidden overflow-hidden bg-[#1B4332] lg:block"><div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1800&q=85')] bg-cover bg-center opacity-80" /><div className="absolute inset-0 bg-[#1B4332]/65" /><div className="relative flex h-full flex-col justify-between p-10 text-white xl:p-16"><div><p className="font-display text-3xl font-bold">don ricardo<span className="text-[#B7D96B]">.</span></p><p className="mt-2 text-[10px] font-bold uppercase tracking-[.25em] text-white/55">Agrícola Don Ricardo</p></div><div className="max-w-lg"><div className="mb-5 flex h-12 w-12 items-center justify-center bg-[#B7D96B] text-[#1B4332]"><Leaf size={24} /></div><h1 className="font-display text-5xl font-bold leading-[1.05]">La cosecha que llega más lejos.</h1><p className="mt-5 max-w-md text-sm leading-6 text-white/65">Controla la trazabilidad, valida la calidad y coordina cada despacho.</p></div><div className="flex items-center gap-2 text-xs text-white/50"><ShieldCheck size={15} className="text-[#B7D96B]" /> Acceso protegido con Supabase Auth</div></div></section><section className="flex items-center justify-center px-5 py-10 sm:px-10"><motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45 }} className="w-full max-w-md"><Card className="border-gray-100 bg-white shadow-sm"><CardHeader><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#C9603F]">Portal de operaciones</p><CardTitle className="mt-2 text-3xl">Bienvenido de vuelta</CardTitle><p className="mt-2 text-sm text-gray-500">Ingresa con tu cuenta corporativa.</p></CardHeader><CardContent><Button type="button" onClick={handleGoogleLogin} disabled={loading} className="w-full bg-white text-gray-800 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"><span className="font-bold text-blue-600">G</span> Continuar con Google</Button><div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-400"><span className="h-px flex-1 bg-gray-200" /> o acceso manual <span className="h-px flex-1 bg-gray-200" /></div><form onSubmit={submit} className="space-y-5"><label className="block text-xs font-bold text-gray-800">Correo o usuario<Input value={user} onChange={(event) => setUser(event.target.value)} className="mt-2" placeholder="correo@empresa.com" autoComplete="username" /></label><label className="block text-xs font-bold text-gray-800">Contraseña<div className="relative mt-2"><LockKeyhole size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><Input value={pass} onChange={(event) => setPass(event.target.value)} className="pl-9" placeholder="••••••••" type="password" autoComplete="current-password" /></div></label>{toast && <p role="alert" className="text-xs font-semibold text-red-600">{toast}</p>}<Button type="submit" disabled={loading} className="w-full bg-[#1B4332] hover:bg-[#163728]">{loading ? "Validando..." : "Ingresar al panel"}<ArrowRight size={16} /></Button></form><p className="mt-6 text-center text-[11px] text-gray-400">Demo: gerente/admin123 · packing/pack123 · agronomo/agro123</p></CardContent></Card></motion.div></section></main>;
+  return <main className="grid min-h-screen bg-stone-50 lg:grid-cols-2"><section className="relative hidden overflow-hidden bg-[#1B4332] lg:block"><div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1800&q=85')] bg-cover bg-center opacity-80" /><div className="absolute inset-0 bg-[#1B4332]/65" /><div className="relative flex h-full flex-col justify-between p-10 text-white xl:p-16"><div><p className="font-display text-3xl font-bold">don ricardo<span className="text-[#B7D96B]">.</span></p><p className="mt-2 text-[10px] font-bold uppercase tracking-[.25em] text-white/55">Agrícola Don Ricardo</p></div><div className="max-w-lg"><div className="mb-5 flex h-12 w-12 items-center justify-center bg-[#B7D96B] text-[#1B4332]"><Leaf size={24} /></div><h1 className="font-display text-5xl font-bold leading-[1.05]">La cosecha que llega más lejos.</h1><p className="mt-5 max-w-md text-sm leading-6 text-white/65">Controla la trazabilidad, valida la calidad y coordina cada despacho.</p></div><div className="flex items-center gap-2 text-xs text-white/50"><ShieldCheck size={15} className="text-[#B7D96B]" /> Acceso protegido con Supabase Auth</div></div></section><section className="flex items-center justify-center px-5 py-10 sm:px-10"><motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45 }} className="w-full max-w-md"><Card className="border-gray-100 bg-white shadow-sm"><CardHeader><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#C9603F]">Portal de operaciones</p><CardTitle className="mt-2 text-3xl">Bienvenido de vuelta</CardTitle><p className="mt-2 text-sm text-gray-500">Ingresa con tu cuenta corporativa.</p></CardHeader><CardContent><Button type="button" onClick={handleGoogleLogin} disabled={loading} className="w-full bg-white text-gray-800 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"><span className="font-bold text-blue-600">G</span> Continuar con Google</Button><div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-400"><span className="h-px flex-1 bg-gray-200" /> o acceso manual <span className="h-px flex-1 bg-gray-200" /></div><form onSubmit={submit} className="space-y-5"><label className="block text-xs font-bold text-gray-800">Correo o usuario<Input value={user} onChange={(event) => setUser(event.target.value)} className="mt-2" placeholder="correo@empresa.com" autoComplete="username" /></label><label className="block text-xs font-bold text-gray-800">Contraseña<div className="relative mt-2"><LockKeyhole size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><Input value={pass} onChange={(event) => setPass(event.target.value)} className="pl-9" placeholder="••••••••" type="password" autoComplete="current-password" /></div></label>{toast && <p role={toastSuccess ? "status" : "alert"} className={`text-xs font-semibold ${toastSuccess ? "text-green-700" : "text-red-600"}`}>{toast}</p>}<Button type="submit" disabled={loading} className="w-full bg-[#1B4332] hover:bg-[#163728]">{loading ? "Validando..." : "Ingresar al panel"}<ArrowRight size={16} /></Button></form><button type="button" onClick={handlePasswordRecovery} disabled={loading} className="mt-4 w-full text-center text-xs font-semibold text-[#1B4332] hover:underline disabled:opacity-50">¿Olvidaste tu contraseña?</button><p className="mt-6 text-center text-[11px] text-gray-400">Demo: gerente/admin123 · packing/pack123 · agronomo/agro123</p></CardContent></Card></motion.div></section></main>;
 }
