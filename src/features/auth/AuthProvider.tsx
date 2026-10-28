@@ -9,6 +9,7 @@ type AuthContextValue = {
   client: ReturnType<typeof getSupabaseBrowserClient>;
   session: Session | null; profile: UserProfile | null; loading: boolean; error: string;
   recovery: boolean; clearRecovery: () => void; reload: () => void;
+  updateProfile: (updates: Partial<Pick<UserProfile, "nombre" | "telefono" | "descripcion" | "avatar_path">>) => void;
   signOut: () => Promise<void>;
 };
 const Context = createContext<AuthContextValue | null>(null);
@@ -47,11 +48,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!id) { setLoading(false); return; }
       setLoading(true);
       try {
-        const { data, error: requestError } = await client!.from("usuarios").select("id, nombre, email, rol, is_active").eq("id", id).maybeSingle();
+        const { data, error: requestError } = await client!.from("usuarios").select("id, nombre, email, rol, is_active, telefono, descripcion, avatar_path").eq("id", id).maybeSingle();
         if (!active || request !== generation.current) return;
         if (requestError) throw new Error(requestError.message);
         if (!data || !isUserRole(data.rol)) throw new Error("Tu cuenta aún no tiene un perfil válido. Contacta a Gerencia.");
-        setProfile(data as UserProfile);
+        setProfile({
+          id: data.id,
+          nombre: data.nombre,
+          email: data.email,
+          rol: data.rol,
+          is_active: data.is_active,
+          telefono: data.telefono,
+          descripcion: data.descripcion,
+          avatar_path: data.avatar_path,
+        });
       } catch (cause) {
         if (active && request === generation.current) setError(cause instanceof Error ? cause.message : "No se pudo cargar tu perfil.");
       } finally { if (active && request === generation.current) setLoading(false); }
@@ -71,7 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => { if (active) { setError("No se pudo restaurar la sesión."); setLoading(false); } });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, [client, retry]);
-  const value = { client, session, profile, loading, error, recovery, clearRecovery: () => setRecovery(false), reload: () => setRetry((value) => value + 1), signOut };
+  const updateProfile = useCallback((updates: Partial<Pick<UserProfile, "nombre" | "telefono" | "descripcion" | "avatar_path">>) => {
+    setProfile((current) => current ? { ...current, ...updates } : current);
+  }, []);
+  const value = { client, session, profile, loading, error, recovery, clearRecovery: () => setRecovery(false), reload: () => setRetry((value) => value + 1), updateProfile, signOut };
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useAuth() { const context = useContext(Context); if (!context) throw new Error("AuthProvider no está montado."); return context; }

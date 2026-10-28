@@ -11,7 +11,7 @@ Aplicación de trazabilidad agroexportadora con tres áreas existentes: Campo (`
 - RLS para perfiles y tablas agrícolas existentes; los permisos no dependen de cookies editables.
 - Exportación estática y workflow para GitHub Pages bajo `/PROYECTO_CURSO_IA/`.
 
-Esta entrega **no completa ni reemplaza las funcionalidades agrícolas existentes**. Algunas vistas, documentos, despachos e interacciones de asistentes todavía usan datos locales o de demostración. Autenticar la interfaz no los convierte en flujos persistentes. No se copian cuentas ni datos de SERPOST.
+Esta entrega **no completa ni reemplaza las funcionalidades agrícolas existentes**. Las respuestas de los asistentes son locales y no hay un proveedor de IA conectado; las vistas de autorización y auditoría con datos de ejemplo no persisten ni autorizan operaciones reales. Autenticar la interfaz no convierte flujos locales en persistentes. No se copian cuentas ni datos de SERPOST.
 
 ## Inicio local
 
@@ -32,6 +32,7 @@ Sigue [la guía de Supabase y Pages](docs/supabase-auth-pages.md). En una base n
 1. `supabase/migrations/202610280000_base_agricola.sql`
 2. `supabase/migrations/202610280001_auth_don_ricardo.sql`
 3. `supabase/migrations/202610280002_workflow_access.sql`
+4. `supabase/migrations/202610280003_sprint_2_profile_dashboard.sql`
 
 No ejecutes también `database/schema.sql` (esquema histórico Neon) ni reinstales el archivo histórico `database/supabase-schema.sql`. Si el proyecto ya tiene datos, respáldalo y revisa la diferencia de esquema y políticas antes de aplicar cambios; no lo reinicies ni borres tablas.
 
