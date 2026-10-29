@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validateAvatarFile, validateAvatarSignature, validateEditableProfile } from '../src/features/profile/profile-validation.ts';
-import { dashboardSinceDate, getStatusCounts, parseGerenciaDashboard } from '../src/features/gerencia/dashboard-data.ts';
+import { comparePeriodCounts, dashboardSinceDate, dateKeyInLima, getRegistrationSeries, getStatusCounts, parseGerenciaDashboard } from '../src/features/gerencia/dashboard-data.ts';
 
 test('profile validation accepts optional details and enforces lengths and phone format', () => {
   assert.equal(validateEditableProfile({ nombre: 'Rodrigo Díaz', telefono: '', descripcion: '' }), null);
@@ -40,6 +40,30 @@ test('dashboard periods are bounded and status counts use the selected lot set',
   ]);
   assert.throws(() => parseGerenciaDashboard({ lotes: [], documentos: -1 }));
   assert.throws(() => parseGerenciaDashboard({ lotes: [{ id: 'L-3', estado: 'DESPACHADO' }], documentos: 0 }));
+});
+
+test('dashboard trend groups registrations in Lima time and fills covered zero days', () => {
+  const lotes = [
+    { id: 'L-1', fundo: 'A', cultivo: 'Uva', agroquimico: 'A', estado: 'EN_CAMPO', fecha_cosecha: '2026-10-28', created_at: '2026-10-29T02:00:00.000Z' },
+    { id: 'L-2', fundo: 'A', cultivo: 'Uva', agroquimico: 'A', estado: 'EN_CAMPO', fecha_cosecha: '2026-10-29', created_at: '2026-10-29T06:00:00.000Z' },
+    { id: 'L-3', fundo: 'A', cultivo: 'Uva', agroquimico: 'A', estado: 'EN_CAMPO', fecha_cosecha: '2026-10-27', created_at: '2026-10-27T15:00:00.000Z' },
+  ];
+  assert.equal(dateKeyInLima('2026-10-29T02:00:00.000Z'), '2026-10-28');
+  const daily = getRegistrationSeries(lotes, '2026-10-27', '2026-10-30', 'day');
+  assert.deepEqual(daily.map(({ key, total }) => [key, total]), [
+    ['2026-10-27', 1],
+    ['2026-10-28', 1],
+    ['2026-10-29', 1],
+    ['2026-10-30', 0],
+  ]);
+  const weekly = getRegistrationSeries(lotes, '2026-10-27', '2026-11-02', 'week');
+  assert.equal(weekly.length, 2);
+  assert.equal(weekly[0].total, 3);
+  assert.match(weekly[0].fullLabel, /^Semana parcial/);
+  assert.equal(weekly[1].total, 0);
+  const filteredSeries = getRegistrationSeries([lotes[1]], '2026-10-27', '2026-10-30', 'day', '2026-10-27');
+  assert.deepEqual(filteredSeries.map(({ total }) => total), [0, 0, 1, 0]);
+  assert.deepEqual(comparePeriodCounts(4, 0), { difference: 4, label: 'Sin base de comparación · +4' });
 });
 
 test('new database functions guard profile edits and managerial access', () => {
