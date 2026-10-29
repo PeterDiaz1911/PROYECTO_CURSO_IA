@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -207,15 +206,15 @@ function PackingWorkspace() {
         {packingTabs.map(({ id, label, icon: Icon }) => {
           const selected = tab === id;
           return (
-            <Link
+            <a
               key={id}
-              href={`/packing?tab=${id}`}
+              href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/packing/?tab=${id}`}
               aria-current={selected ? "page" : undefined}
               className={`flex min-h-12 items-center gap-2 border px-3 py-2 text-xs font-bold transition sm:text-sm ${selected ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-gray-200 bg-white text-gray-600 hover:border-[#1B4332]/40 hover:text-[#1B4332]"}`}
             >
               <Icon size={16} />
               {label}
-            </Link>
+            </a>
           );
         })}
       </nav>
@@ -268,7 +267,7 @@ function PackingOverview({
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
             {serviceSteps.map(({ title, description, icon: Icon, tab, state }) => (
-              <Link key={title} href={`/packing?tab=${tab}`} className="group border border-gray-100 bg-gray-50 p-4 transition hover:border-[#1B4332]/30 hover:bg-green-50">
+              <a key={title} href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/packing/?tab=${tab}`} className="group border border-gray-100 bg-gray-50 p-4 transition hover:border-[#1B4332]/30 hover:bg-green-50">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold tracking-widest text-[#C9603F]">ETAPA {state}</span>
                   <Icon size={18} className="text-[#1B4332]" />
@@ -278,7 +277,7 @@ function PackingOverview({
                 <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#1B4332]">
                   Abrir sección <ArrowRight size={13} className="transition group-hover:translate-x-1" />
                 </span>
-              </Link>
+              </a>
             ))}
           </div>
         </CardContent>
@@ -299,9 +298,9 @@ function PackingOverview({
               <span className="text-sm text-gray-600">Pendientes o en revisión</span>
               <span className="font-bold text-amber-700">{pendingOrders}</span>
             </div>
-            <Link href="/packing?tab=salida" className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-[#1B4332] hover:text-[#C9603F]">
+            <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/packing/?tab=salida`} className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-[#1B4332] hover:text-[#C9603F]">
               Ir a control de salida <ArrowRight size={15} />
-            </Link>
+            </a>
           </CardContent>
         </Card>
         <Card>

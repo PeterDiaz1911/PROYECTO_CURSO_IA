@@ -1,9 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { Route } from "next";
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, ClipboardCheck, FileCheck2, LayoutDashboard, Leaf, LogOut, Menu, MessageCircle, PackageCheck, ShieldCheck, Truck, UserCog, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +10,14 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { AuthGate } from "@/features/auth/AuthGate";
 import { roleAreas } from "@/features/auth/roles";
 import { ProfileMenu } from "@/features/profile/ProfileMenu";
+
+// Pages serves exported HTML directly. Native navigation avoids exposing an RSC
+// index.txt response when the static host redirects a client navigation request.
+function pageHref(href: string) {
+  const [pathname, query] = href.split("?");
+  const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").replace(/\/$/, "");
+  return `${basePath}${pathname.replace(/\/$/, "")}/${query ? `?${query}` : ""}`;
+}
 
 const menus: Record<UserRole, { href: string; label: string; icon: typeof Leaf }[]> = {
   OPERADOR: [
@@ -66,7 +72,7 @@ function DashboardShell({ children }: { children: ReactNode }) {
           <button type="button" aria-label="Cerrar menú" onClick={() => setMobileOpen(false)} className="text-green-100 lg:hidden"><X size={18} /></button>
         </div>
         <nav aria-label="Menú del rol" className="flex-1 space-y-1 overflow-y-auto px-3 py-7">
-          {menus[role].map(({ href, label, icon: Icon }) => { const [hrefPath, query] = href.split("?"); const active = pathname === hrefPath && activeTab === new URLSearchParams(query).get("tab"); return <Link key={href} href={href as Route} onClick={() => setMobileOpen(false)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-green-100/70 transition hover:bg-green-800/70 hover:text-white", active && "bg-[#B7D96B] text-[#1B4332] hover:bg-[#B7D96B] hover:text-[#1B4332]")}><Icon size={17} strokeWidth={1.8} /><span>{label}</span></Link>; })}
+          {menus[role].map(({ href, label, icon: Icon }) => { const [hrefPath, query] = href.split("?"); const active = pathname.replace(/\/$/, "") === hrefPath && (activeTab ?? "panel") === new URLSearchParams(query).get("tab"); return <a key={href} href={pageHref(href)} onClick={() => setMobileOpen(false)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-green-100/70 transition hover:bg-green-800/70 hover:text-white", active && "bg-[#B7D96B] text-[#1B4332] hover:bg-[#B7D96B] hover:text-[#1B4332]")}><Icon size={17} strokeWidth={1.8} /><span>{label}</span></a>; })}
         </nav>
         <button type="button" onClick={() => void handleLogout()} className="flex h-16 flex-shrink-0 items-center gap-3 border-t border-green-800 px-5 text-sm font-semibold text-green-100/70 transition hover:bg-green-800/50 hover:text-white"><LogOut size={17} /> Cerrar Sesión</button>
       </aside>
