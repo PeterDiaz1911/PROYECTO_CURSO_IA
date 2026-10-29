@@ -15,6 +15,7 @@ import { ProfileMenu } from "@/features/profile/ProfileMenu";
 
 const menus: Record<UserRole, { href: string; label: string; icon: typeof Leaf }[]> = {
   OPERADOR: [
+    { href: "/campo?tab=panel", label: "Resumen de Campo", icon: LayoutDashboard },
     { href: "/campo?tab=registro", label: "Registro de Cosecha", icon: Leaf },
     { href: "/campo?tab=lotes", label: "Mis Lotes Enviados", icon: FileCheck2 },
     { href: "/campo?tab=guias", label: "Guías de Campo", icon: MessageCircle },
@@ -54,9 +55,9 @@ function DashboardShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F5F8F4] text-[#17251D]">
+    <div className="fixed inset-0 flex h-dvh w-full min-w-0 overflow-hidden bg-[#F5F8F4] text-[#17251D]">
       {mobileOpen && <button type="button" aria-label="Cerrar menú" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-10 bg-black/30 lg:hidden" />}
-      <aside className={cn("w-64 flex-shrink-0 bg-[#1B4332] text-white flex flex-col h-full border-r shadow-lg z-20 transition-transform", mobileOpen ? "fixed inset-y-0 left-0 translate-x-0" : "fixed inset-y-0 left-0 -translate-x-full", "lg:static lg:translate-x-0")}>
+      <aside className={cn("relative z-20 flex h-screen w-64 flex-shrink-0 flex-col overflow-hidden border-r bg-[#1B4332] text-white shadow-lg transition-transform", mobileOpen ? "fixed inset-y-0 left-0 translate-x-0" : "fixed inset-y-0 left-0 -translate-x-full", "lg:sticky lg:top-0 lg:h-screen lg:translate-x-0") }>
         <div className="flex h-20 flex-shrink-0 items-center justify-between border-b border-white/10 px-5">
           <div>
             <p className="font-display text-2xl font-bold tracking-tight">don ricardo<span className="text-[#B7D96B]">.</span></p>
@@ -69,13 +70,15 @@ function DashboardShell({ children }: { children: ReactNode }) {
         </nav>
         <button type="button" onClick={() => void handleLogout()} className="flex h-16 flex-shrink-0 items-center gap-3 border-t border-green-800 px-5 text-sm font-semibold text-green-100/70 transition hover:bg-green-800/50 hover:text-white"><LogOut size={17} /> Cerrar Sesión</button>
       </aside>
-      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-10 flex h-20 flex-shrink-0 items-center justify-between border-b border-[#17251D]/10 bg-white px-3 shadow-sm sm:px-5 lg:px-7">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="sticky top-0 z-20 flex h-20 flex-shrink-0 items-center justify-between border-b border-[#17251D]/10 bg-white/95 px-3 shadow-sm backdrop-blur-sm sm:px-5 lg:px-7">
           <button type="button" aria-label="Abrir menú" onClick={() => setMobileOpen(true)} className="text-gray-700 lg:hidden"><Menu size={22} /></button>
           <div className="hidden sm:block"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#2D6A4F]">AGRÍCOLA DON RICARDO</p><p className="mt-1 text-xs text-[#526157]">Operación Perú · Temporada 2026</p></div>
           <div className="ml-auto flex items-center gap-3 sm:gap-4"><button type="button" aria-label="Ver notificaciones" className="relative rounded-lg p-2 text-[#526157] outline-none transition hover:bg-[#F5F8F4] hover:text-[#1B4332] focus-visible:ring-2 focus-visible:ring-[#2D6A4F]"><Bell size={19} /><span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#C9603F]" /></button><div className="hidden h-8 w-px bg-[#17251D]/10 sm:block" /><ProfileMenu /></div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7">{logoutError && <p role="alert" className="mb-4 text-red-700">{logoutError}</p>}{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-4 sm:p-6 lg:p-7">
+          <div className="mx-auto w-full max-w-[1600px]">{logoutError && <p role="alert" className="mb-4 text-red-700">{logoutError}</p>}{children}</div>
+        </main>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Camera, Check, LoaderCircle, Pencil, Trash2, X } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -224,8 +225,8 @@ export function ProfileDialog({ profile, startInEditMode, onClose, onProfileSave
 
   const photoUrl = previewUrl || "";
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="fixed inset-0 z-50 flex items-center justify-center bg-[#17251D]/55 p-3 sm:p-6" onMouseDown={(event) => {
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-[#17251D]/55 p-3 sm:p-6" onMouseDown={(event) => {
       if (event.target === event.currentTarget) requestClose();
     }}>
       <motion.section
@@ -238,7 +239,7 @@ export function ProfileDialog({ profile, startInEditMode, onClose, onProfileSave
         initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.16 }}
-        className="max-h-[min(90dvh,800px)] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#17251D]/10 bg-white shadow-2xl outline-none"
+        className="my-auto max-h-[min(calc(100dvh-1.5rem),800px)] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#17251D]/10 bg-white shadow-2xl outline-none sm:max-h-[min(calc(100dvh-3rem),800px)]"
       >
         <header className="flex items-start justify-between gap-4 border-b border-[#17251D]/10 px-5 py-5 sm:px-7">
           <div>
@@ -346,7 +347,8 @@ export function ProfileDialog({ profile, startInEditMode, onClose, onProfileSave
           )}
         </div>
       </motion.section>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
 
