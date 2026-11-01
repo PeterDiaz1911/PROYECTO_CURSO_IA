@@ -1,6 +1,28 @@
 export const dashboardStatuses = ["EN_CAMPO", "EN_PACKING", "PENDIENTE_FIRMA", "APROBADO", "RECHAZADO"] as const;
 export type DashboardStatus = typeof dashboardStatuses[number];
-export type DashboardPeriod = "7d" | "30d" | "90d" | "all" | "custom";
+export type DashboardPeriod = "today" | "7d" | "30d" | "90d" | "all" | "custom";
+export const dashboardStatusConfig: Record<DashboardStatus, { label: string; color: string }> = {
+  EN_CAMPO: { label: "En campo", color: "var(--status-field)" },
+  EN_PACKING: { label: "En Packing", color: "var(--status-packing)" },
+  PENDIENTE_FIRMA: { label: "Pendiente de firma", color: "var(--status-pending)" },
+  APROBADO: { label: "Aprobado", color: "var(--status-approved)" },
+  RECHAZADO: { label: "Rechazado", color: "var(--status-rejected)" },
+};
+export function categoryColor(label: string): string {
+  let hash = 0;
+  let hueHash = 2166136261;
+  for (const character of label.normalize("NFC").toLocaleLowerCase("es")) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined) {
+      hash = (hash * 31 + codePoint) >>> 0;
+      hueHash = Math.imul(hueHash ^ codePoint, 16777619) >>> 0;
+    }
+  }
+  const hue = hueHash % 360;
+  const saturation = 48 + (hash % 13);
+  const lightness = 38 + ((hash >>> 8) % 9);
+  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+}
 
 export type DashboardLot = {
   id: string;
@@ -45,6 +67,7 @@ export function shiftDateKey(dateKey: string, days: number): string {
 
 export function dashboardSinceDate(period: DashboardPeriod, now = new Date()): string | null {
   if (period === "all" || period === "custom") return null;
+  if (period === "today") return dateKeyInLima(now);
   const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
   return shiftDateKey(dateKeyInLima(now), -(days - 1));
 }

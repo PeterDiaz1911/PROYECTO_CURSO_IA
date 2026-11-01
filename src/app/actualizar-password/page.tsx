@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ThemeSelect } from "@/features/theme/ThemeSelect";
 
 async function prepareRecoverySession(): Promise<string | null> {
   const supabase = getSupabaseBrowserClient();
@@ -100,7 +101,8 @@ export default function ActualizarPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5 py-10">
+    <main className="relative flex min-h-screen items-center justify-center bg-stone-50 px-5 py-16">
+      <div className="absolute right-5 top-4"><ThemeSelect /></div>
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <p className="font-display text-3xl font-bold text-[#1B4332]">

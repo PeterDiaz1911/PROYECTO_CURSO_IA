@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validateAvatarFile, validateAvatarSignature, validateEditableProfile } from '../src/features/profile/profile-validation.ts';
-import { comparePeriodCounts, dashboardSinceDate, dateKeyInLima, getRegistrationSeries, getStatusCounts, parseGerenciaDashboard } from '../src/features/gerencia/dashboard-data.ts';
+import { categoryColor, comparePeriodCounts, dashboardSinceDate, dashboardStatusConfig, dateKeyInLima, getRegistrationSeries, getStatusCounts, parseGerenciaDashboard } from '../src/features/gerencia/dashboard-data.ts';
+import { dashboardCsvFilename, dashboardLotsCsv } from '../src/features/gerencia/dashboard-export.ts';
 
 test('profile validation accepts optional details and enforces lengths and phone format', () => {
   assert.equal(validateEditableProfile({ nombre: 'Rodrigo Díaz', telefono: '', descripcion: '' }), null);
@@ -24,6 +25,7 @@ test('avatar validation rejects unsupported MIME types and SVG data disguised as
 
 test('dashboard periods are bounded and status counts use the selected lot set', () => {
   const now = new Date('2026-10-28T13:00:00.000Z');
+  assert.equal(dashboardSinceDate('today', now), '2026-10-28');
   assert.equal(dashboardSinceDate('7d', now), '2026-10-22');
   assert.equal(dashboardSinceDate('30d', now), '2026-09-29');
   assert.equal(dashboardSinceDate('all', now), null);
@@ -34,12 +36,47 @@ test('dashboard periods are bounded and status counts use the selected lot set',
       { id: 'L-2', fundo: 'Fundo B', cultivo: 'Palta', agroquimico: 'Producto B', estado: 'APROBADO', fecha_cosecha: '2026-10-28', created_at: '2026-10-27T10:00:00Z' },
     ],
   });
+
   assert.deepEqual(getStatusCounts(data.lotes).filter((entry) => entry.total), [
     { estado: 'EN_CAMPO', total: 1 },
     { estado: 'APROBADO', total: 1 },
   ]);
   assert.throws(() => parseGerenciaDashboard({ lotes: [], documentos: -1 }));
   assert.throws(() => parseGerenciaDashboard({ lotes: [{ id: 'L-3', estado: 'DESPACHADO' }], documentos: 0 }));
+});
+
+test('dashboard CSV escapes formula payloads and names the filtered export', () => {
+  const csv = dashboardLotsCsv([{
+    id: 'L-1',
+    fundo: ' =HYPERLINK("https://example.test")',
+    cultivo: 'Uva',
+    agroquimico: 'Producto',
+    estado: 'EN_CAMPO',
+    fecha_cosecha: '2026-10-28',
+    created_at: '2026-10-28T10:00:00.000Z',
+    destino: null,
+  }]);
+  assert.match(csv, /Fundo/);
+  assert.match(csv, /"' =HYPERLINK\(""https:\/\/example\.test""\)"/);
+  assert.match(csv, /"Sin destino"/);
+  assert.equal(dashboardCsvFilename('2026-10-28'), 'lotes-filtrados-2026-10-28.csv');
+});
+
+test('category colors stay stable when chart ranking order changes', () => {
+  assert.equal(categoryColor('Uva'), categoryColor('Uva'));
+  assert.equal(categoryColor('Uva'), categoryColor('UVA'));
+  assert.equal(categoryColor('Café'), categoryColor('Cafe\u0301'));
+  assert.notEqual(categoryColor('Uva'), categoryColor('Palta'));
+});
+
+test('dashboard status labels and colors share one stable mapping', () => {
+  assert.deepEqual(Object.values(dashboardStatusConfig), [
+    { label: 'En campo', color: 'var(--status-field)' },
+    { label: 'En Packing', color: 'var(--status-packing)' },
+    { label: 'Pendiente de firma', color: 'var(--status-pending)' },
+    { label: 'Aprobado', color: 'var(--status-approved)' },
+    { label: 'Rechazado', color: 'var(--status-rejected)' },
+  ]);
 });
 
 test('dashboard trend groups registrations in Lima time and fills covered zero days', () => {

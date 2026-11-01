@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ProfileAvatar } from "@/features/profile/ProfileAvatar";
 import { ProfileDialog } from "@/features/profile/ProfileDialog";
+import { ThemeSelect } from "@/features/theme/ThemeSelect";
 
 export function ProfileMenu() {
   const { profile, signOut, updateProfile } = useAuth();
@@ -93,10 +94,13 @@ export function ProfileMenu() {
       </button>
 
       {menuOpen && (
-        <motion.div ref={menu} id="account-menu" role="menu" aria-label="Menú de cuenta" initial={{ opacity: 0, y: reduceMotion ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.12 }} className="absolute right-0 top-full z-40 mt-2 w-64 rounded-2xl border border-[#17251D]/10 bg-white p-2 shadow-xl">
-          <div className="border-b border-[#17251D]/10 px-3 py-2">
-            <p className="truncate text-sm font-bold text-[#17251D]">{profile.nombre}</p>
-            <p className="truncate text-xs text-[#526157]">{profile.email}</p>
+        <motion.div ref={menu} id="account-menu" role="menu" aria-label="Menú de cuenta" initial={{ opacity: 0, y: reduceMotion ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.12 }} className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-default bg-menu p-2 shadow-xl">
+          <div className="border-b border-default px-3 py-2">
+            <p className="truncate text-sm font-bold text-primary">{profile.nombre}</p>
+            <p className="truncate text-xs text-secondary">{profile.email}</p>
+          </div>
+          <div role="group" aria-label="Preferencia de apariencia" className="px-2 py-2">
+            <ThemeSelect compact />
           </div>
           <button role="menuitem" type="button" onClick={() => openDialog("view")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[#17251D] outline-none hover:bg-[#F5F8F4] focus-visible:ring-2 focus-visible:ring-[#2D6A4F]">
             <UserRound size={17} /> Mi perfil

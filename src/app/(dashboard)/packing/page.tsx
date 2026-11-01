@@ -222,9 +222,9 @@ function PackingWorkspace() {
       {loadingLotes && <p role="status" className="text-sm text-gray-500">Sincronizando lotes de recepción...</p>}
       {lotesError && <p role="alert" className="border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{lotesError}</p>}
 
-      <div className="grid min-h-0 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={`grid min-h-0 grid-cols-1 items-start gap-6 ${tab === "panel" ? "" : "xl:grid-cols-[minmax(0,1fr)_340px]"}`}>
         <section className="min-w-0">{renderTab()}</section>
-        <aside className="min-w-0 self-start xl:sticky xl:top-6"><IAValidadorPacking /></aside>
+        {tab !== "panel" && <aside className="min-w-0 self-start xl:sticky xl:top-6"><IAValidadorPacking /></aside>}
       </div>
     </div>
   );

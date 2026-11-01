@@ -1,6 +1,7 @@
 target/
 .idea/
 .vscode/settings.json
+!.vscode/settings.json
 *.iml
 .env
 .env*.local

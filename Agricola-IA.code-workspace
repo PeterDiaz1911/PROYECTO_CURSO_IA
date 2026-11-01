@@ -1,0 +1,9 @@
+{
+  "folders": [{ "path": "." }],
+  "settings": {
+    "deno.enablePaths": ["./supabase/functions"]
+  },
+  "extensions": {
+    "recommendations": ["denoland.vscode-deno"]
+  }
+}
