@@ -1,4 +1,5 @@
 "use client";
+import { KpiCard } from "@/components/ui/kpi-card";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowDownWideNarrow, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, UserCog, UserRoundPlus, UserX } from "lucide-react";

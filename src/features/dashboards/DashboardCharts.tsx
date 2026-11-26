@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { TooltipContentProps } from "recharts";
@@ -39,32 +40,64 @@ export function DashboardMetric({
   onClick?: () => void;
   tone?: "approved";
 }) {
-  const content = <CardContent className="p-4 sm:p-5">
+  const reduceMotion = useReducedMotion();
+  const content = (
+    <CardContent className="p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-secondary">{label}</p>
-              <p className="mt-2 flex flex-wrap items-baseline gap-1.5 text-3xl font-bold tabular-nums text-primary"><span>{value}</span>{unit && <span className="text-sm font-semibold text-secondary">{unit}</span>}</p>
+          <p className="mt-2 flex flex-wrap items-baseline gap-1.5 text-3xl font-bold tabular-nums text-primary">
+            <span>{value}</span>{unit && <span className="text-sm font-semibold text-secondary">{unit}</span>}
+          </p>
         </div>
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone === "approved" ? "bg-[#1B4332] text-white" : "bg-[#E8EEE7] text-[#1B4332]"}`}><Icon size={18} /></span>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone === "approved" ? "bg-[#1B4332] text-white" : "bg-[#E8EEE7] text-[#1B4332]"}`}>
+          <Icon size={18} />
+        </span>
       </div>
       <p className="mt-3 text-xs leading-5 text-secondary">{detail}</p>
       {comparison && <p className="mt-1 text-xs font-semibold text-secondary">{comparison}</p>}
       {onClick && <button type="button" onClick={onClick} className="absolute inset-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2D6A4F]" aria-label={`${label}: ${value}. Filtrar lotes relacionados.`} />}
     </CardContent>
-  return <Card className={`relative h-full rounded-2xl ${onClick ? "transition hover:border-[#2D6A4F]/40 hover:shadow-md" : ""}`}>
-    {content}
-  </Card>;
+  );
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={onClick && !reduceMotion ? { y: -2 } : undefined}
+      transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
+      className="h-full"
+    >
+      <Card className={`relative h-full rounded-2xl transition-shadow duration-200 ${onClick ? "cursor-pointer hover:border-[#2D6A4F]/40 hover:shadow-md" : "hover:shadow-sm"}`}>
+        {content}
+      </Card>
+    </motion.div>
+  );
 }
 
 export function ChartCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return <Card className="min-w-0 rounded-2xl">
-  <CardHeader className="pb-3"><CardTitle>{title}</CardTitle><p className="mt-1 text-xs leading-5 text-secondary">{description}</p></CardHeader>
-    <CardContent className="min-w-0">{children}</CardContent>
-  </Card>;
+  return (
+    <Card className="min-w-0 rounded-2xl transition-shadow duration-200 hover:shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle>{title}</CardTitle>
+        <p className="mt-1 text-xs leading-5 text-secondary">{description}</p>
+      </CardHeader>
+      <CardContent className="min-w-0">{children}</CardContent>
+    </Card>
+  );
 }
 
 export function ChartLoading({ label = "Cargando datos del gráfico…" }: { label?: string }) {
-  return <div role="status" className="grid h-[300px] place-items-center text-sm text-[#526157]">{label}</div>;
+  return (
+    <div role="status" className="flex h-[300px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#17251D]/10 bg-white/70 p-6 text-sm text-[#526157]">
+      <div className="flex items-end gap-1.5" aria-hidden="true">
+        <span className="h-5 w-1.5 animate-pulse rounded-full bg-[#2D6A4F]/40" />
+        <span className="h-8 w-1.5 animate-pulse rounded-full bg-[#2D6A4F]/70 [animation-delay:150ms]" />
+        <span className="h-6 w-1.5 animate-pulse rounded-full bg-[#2D6A4F] [animation-delay:300ms]" />
+        <span className="h-9 w-1.5 animate-pulse rounded-full bg-[#2D6A4F]/60 [animation-delay:450ms]" />
+      </div>
+      <p className="font-medium">{label}</p>
+    </div>
+  );
 }
 
 export function ChartEmpty({ label = "No hay datos suficientes para este período." }: { label?: string }) {

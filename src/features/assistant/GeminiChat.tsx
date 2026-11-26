@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { Bot, ChevronDown, LoaderCircle, MessageCircle, Minimize2, Send, X } from "lucide-react";
+import { Bot, ChevronDown, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { AssistantRequestError, askGemini, savedLotId, type AssistantFailureKind } from "./assistant-api";
 import { useAuth } from "@/features/auth/AuthProvider";
 
@@ -31,6 +31,22 @@ export function GeminiChat({
     return <FloatingAssistant key={conversationKey} lotId={id} title={title} open={open} onOpenChange={onOpenChange} />;
   }
   return <Conversation key={conversationKey} lotId={id} title={title} embedded={embedded} presentation="inline" />;
+}
+
+function AssistantAvatar({ busy = false, size = "md" }: { busy?: boolean; size?: "sm" | "md" }) {
+  const dims = size === "sm" ? "h-8 w-8 rounded-xl" : "h-11 w-11 rounded-2xl";
+  const iconSize = size === "sm" ? 16 : 21;
+  return (
+    <span
+      className={`relative flex ${dims} shrink-0 items-center justify-center bg-gradient-to-br from-[#B7D96B] via-emerald-300 to-emerald-400 text-[#0F291E] shadow-md ring-2 ring-white/25`}
+    >
+      <Bot size={iconSize} className={busy ? "animate-pulse" : ""} />
+      <Sparkles
+        size={size === "sm" ? 10 : 12}
+        className={`absolute -right-1 -top-1 text-amber-200 drop-shadow ${busy ? "animate-spin" : ""}`}
+      />
+    </span>
+  );
 }
 
 function FloatingAssistant({
@@ -113,7 +129,7 @@ function FloatingAssistant({
 
   if (!mounted) return null;
   return createPortal(<div className={`pointer-events-none fixed inset-0 z-[70] ${isOpen ? "isolate" : ""}`}>
-    {isOpen && mobile && <button type="button" aria-label="Cerrar asistente" tabIndex={-1} onClick={() => changeOpen(false)} className="pointer-events-auto fixed inset-0 bg-[#17251D]/55" />}
+    {isOpen && mobile && <button type="button" aria-label="Cerrar asistente" tabIndex={-1} onClick={() => changeOpen(false)} className="pointer-events-auto fixed inset-0 bg-[#17251D]/60 backdrop-blur-xs" />}
     <div
       ref={panel}
       role="dialog"
@@ -123,7 +139,7 @@ function FloatingAssistant({
       style={mobile
         ? { top: visualViewport?.top ?? 0, left: 0, right: 0, height: visualViewport?.height ?? "100dvh" }
         : { bottom: "calc(5rem + env(safe-area-inset-bottom))", right: "1.25rem" }}
-      className={`pointer-events-auto fixed z-[71] overflow-hidden bg-white shadow-2xl outline-none ${mobile ? "w-full" : "h-[min(680px,calc(100dvh-7rem))] w-[min(420px,calc(100vw-2.5rem))] rounded-2xl border border-[#17251D]/15"} ${isOpen ? "block" : "hidden"}`}
+      className={`pointer-events-auto fixed z-[71] overflow-hidden bg-[var(--surface,#ffffff)] shadow-[0_24px_60px_-15px_rgba(8,28,21,0.35)] outline-none transition-all duration-200 ${mobile ? "w-full" : "h-[min(680px,calc(100dvh-7rem))] w-[min(430px,calc(100vw-2.5rem))] rounded-3xl border border-[#1B4332]/20"} ${isOpen ? "block" : "hidden"}`}
       onMouseDown={(event) => {
         if (mobile && event.target === event.currentTarget) changeOpen(false);
       }}
@@ -145,11 +161,27 @@ function FloatingAssistant({
         opener.current = event.currentTarget;
         changeOpen(true);
       }}
-      style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))", right: "calc(1.25rem + env(safe-area-inset-right))" }}
-      className="pointer-events-auto fixed z-[71] flex min-h-12 items-center gap-2 rounded-full bg-[#1B4332] px-4 text-sm font-bold text-white shadow-lg outline-none transition hover:bg-[#2D6A4F] focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2"
+     style={{
+        bottom: "calc(1.75rem + env(safe-area-inset-bottom))",
+        right: "calc(1.75rem + env(safe-area-inset-right))",
+      }}
+      className="group pointer-events-auto fixed z-[71] flex items-center gap-3 rounded-full border border-white/15 bg-gradient-to-r from-[#1B4332] via-[#21523D] to-[#2D6A4F] py-2.5 pl-3 pr-5 text-sm font-bold text-white shadow-[0_12px_28px_-6px_rgba(27,67,50,0.55)] outline-none transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-6px_rgba(27,67,50,0.65)] focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2"
     >
-      <MessageCircle size={18} aria-hidden="true" /> Asistente IA
-      {lotId && <span className="max-w-28 truncate text-xs font-medium text-white/80">{lotId}</span>}
+      <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#B7D96B] to-emerald-300 text-[#0F291E] shadow-inner transition-transform duration-200 group-hover:scale-105">
+        <Bot size={19} aria-hidden="true" />
+        <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#1B4332]" />
+        </span>
+      </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span>Asistente IA</span>
+        {lotId ? (
+          <span className="max-w-28 truncate text-[11px] font-medium text-emerald-200">{lotId}</span>
+        ) : (
+          <span className="text-[10px] font-medium text-emerald-200/90">En línea</span>
+        )}
+      </span>
     </button>}
   </div>, document.body);
 }
@@ -260,50 +292,223 @@ function Conversation({
                 ? "No se recibió una respuesta del servicio."
                 : "La conexión se comprobará al enviar una consulta.";
 
-  return <section className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden border border-[#1B4332]/15 bg-white ${presentation === "floating" ? "w-full rounded-none sm:rounded-2xl" : `rounded-2xl shadow-sm ${embedded ? "h-full min-h-0 max-h-full w-full" : "min-h-[420px] max-h-[calc(100dvh-8rem)] self-start lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)]"}`}`} aria-label={title}>
-    <header className="shrink-0 border-b border-[#1B4332]/10 bg-[#F5F8F4] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#B7D96B] text-[#17251D]"><Bot size={20} /></span><h2 className="truncate text-lg font-bold text-[#17251D]">{title}</h2></div>
-        <div className="flex shrink-0 items-center gap-1">
-          {presentation === "floating" ? <>
-            <button type="button" onClick={onMinimize} aria-label="Minimizar asistente" className="grid h-10 w-10 place-items-center rounded-lg text-[#526157] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[#2D6A4F]"><Minimize2 size={17} /></button>
-            <button type="button" onClick={onClose} aria-label="Cerrar asistente" className="grid h-10 w-10 place-items-center rounded-lg text-[#526157] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[#2D6A4F]"><X size={18} /></button>
-          </> : <button type="button" onClick={() => setCollapsed((value) => !value)} className="rounded-lg border border-[#1B4332]/10 bg-white px-2 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-[#1B4332]" aria-expanded={!collapsed}>{collapsed ? "Abrir" : "Minimizar"}</button>}
+  return (
+    <section
+      className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden border border-[#1B4332]/15 bg-[var(--surface,#ffffff)] text-[var(--text-primary,#17251D)] ${
+        presentation === "floating"
+          ? "w-full rounded-none sm:rounded-3xl"
+          : `rounded-2xl shadow-sm ${
+              embedded
+                ? "h-full min-h-0 max-h-full w-full"
+                : "min-h-[420px] max-h-[calc(100dvh-8rem)] self-start lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)]"
+            }`
+      }`}
+      aria-label={title}
+    >
+      {/* CABECERA BOTÁNICA CON IDENTIDAD */}
+      <header className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#1B4332] via-[#21523D] to-[#2D6A4F] p-4 text-white">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-300/15 blur-2xl" />
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <AssistantAvatar busy={busy} />
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold leading-tight text-white">{title}</h2>
+              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-100 backdrop-blur-xs">
+                <span className={`h-1.5 w-1.5 rounded-full ${busy ? "animate-ping bg-amber-300" : "bg-emerald-300"}`} />
+                {busy ? "Analizando…" : "En línea"}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {presentation === "floating" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onMinimize}
+                  aria-label="Minimizar asistente"
+                  className="grid h-9 w-9 place-items-center rounded-xl text-white/80 outline-none transition hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+                >
+                  <Minimize2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Cerrar asistente"
+                  className="grid h-9 w-9 place-items-center rounded-xl text-white/80 outline-none transition hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+                >
+                  <X size={17} />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCollapsed((value) => !value)}
+                className="rounded-xl border border-white/20 bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[.12em] text-white backdrop-blur-xs transition hover:bg-white/20"
+                aria-expanded={!collapsed}
+              >
+                {collapsed ? "Abrir" : "Minimizar"}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      {!collapsed && <>
-        <p role="status" className="mt-3 text-xs font-semibold text-[#2D6A4F]">{serviceStatus}</p>
-        <p className="mt-2 break-words text-xs leading-5 text-[#526157]">{lotId ? `Lote seleccionado: ${lotId}. El servidor comprobará tu acceso.` : "Consulta general con el resumen operativo autorizado. Selecciona un lote para consultar sus detalles."}</p>
-      </>}
-    </header>
-    {!collapsed && <>
-      <div
-        ref={list}
-        role="log"
-        aria-live="polite"
-        aria-label="Conversación con el asistente"
-        onScroll={(event) => {
-          const el = event.currentTarget;
-          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
-          if (stick.current) setHasNewMessages(false);
-        }}
-        className="relative min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4"
-      >
-        {!messages.length && <p className="rounded-xl bg-[#F5F8F4] p-3 text-sm leading-6 text-[#17251D]">Consulta sobre trazabilidad, documentación, el resumen operativo o el lote seleccionado. Cada pregunta se evalúa con el contexto actual; no se envía el historial de la conversación.</p>}
-        {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}><p className={`max-w-[94%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "rounded-tr-sm bg-[#B7D96B] text-[#17251D]" : "rounded-tl-sm border border-[#1B4332]/10 bg-[#F5F8F4] text-[#17251D]"}`}><span className="mb-1 block text-xs font-bold">{message.role === "user" ? "Tú" : "Asistente · Gemini"}</span>{message.text}</p></div>)}
-        {busy && <p role="status" className="flex items-center gap-2 text-sm text-[#17251D]"><LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" /> Preparando respuesta…</p>}
-        {hasNewMessages && <div className="sticky bottom-1 flex justify-end"><button type="button" onClick={() => {
-          stick.current = true;
-          if (list.current) list.current.scrollTop = list.current.scrollHeight;
-          setHasNewMessages(false);
-        }} className="inline-flex min-h-9 items-center gap-1 rounded-full bg-[#1B4332] px-3 text-xs font-semibold text-white shadow outline-none hover:bg-[#2D6A4F] focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2"><ChevronDown size={15} /> Mensajes nuevos</button></div>}
-      </div>
-      <form onSubmit={(event) => void submit(event)} className="shrink-0 border-t border-[#1B4332]/10 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
-        {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error} Puedes corregir o reintentar la consulta; tu texto se conserva.</p>}
-        <label htmlFor={inputId} className="sr-only">Tu consulta</label>
-        <div className="flex items-end gap-2"><textarea id={inputId} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={keyDown} rows={2} maxLength={1000} disabled={busy} placeholder="Escribe tu consulta…" className="max-h-32 min-h-12 min-w-0 flex-1 resize-y rounded-xl border border-[#526157]/30 bg-field p-3 text-sm text-[#17251D] outline-none placeholder:text-[#526157] focus:ring-2 focus:ring-[#2D6A4F] disabled:bg-[#F5F8F4]" /><button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar consulta" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1B4332] text-white outline-none hover:bg-[#2D6A4F] focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2 disabled:bg-[#E8EEE7] disabled:text-[#526157]"><Send size={18} /></button></div>
-        <p className="mt-2 text-[11px] leading-5 text-[#526157]">Enter envía · Shift+Enter agrega línea. La IA no consulta normativa vigente ni autoriza aplicaciones o despachos. No incluyas datos personales.</p>
-      </form>
-    </>}
-  </section>;
+      </header>
+
+      {!collapsed && (
+        <>
+          {/* PASTILLA DE ESTADO DE CONEXIÓN Y CONTEXTO */}
+          <div
+            style={{
+              backgroundColor: "color-mix(in srgb, #2D6A4F 7%, var(--surface, #ffffff))",
+              borderColor: "color-mix(in srgb, #2D6A4F 16%, var(--border, rgba(23,37,29,0.1)))",
+            }}
+            className="shrink-0 border-b px-4 py-2.5"
+          >
+            <p role="status" className="text-xs font-semibold text-[#2D6A4F] dark:text-emerald-400 [[data-theme=dark]_&]:text-emerald-400">
+              {serviceStatus}
+            </p>
+            <p className="mt-0.5 break-words text-[11px] leading-4 text-[var(--text-secondary,#526157)]">
+              {lotId
+                ? `Lote seleccionado: ${lotId}. El servidor comprobará tu acceso.`
+                : "Consulta general con el resumen operativo autorizado. Selecciona un lote para consultar sus detalles."}
+            </p>
+          </div>
+
+          {/* ÁREA DE CONVERSACIÓN CON SCROLL FLUIDO */}
+          <div
+            ref={list}
+            role="log"
+            aria-live="polite"
+            aria-label="Conversación con el asistente"
+            onScroll={(event) => {
+              const el = event.currentTarget;
+              stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+              if (stick.current) setHasNewMessages(false);
+            }}
+            className="relative min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain scroll-smooth p-4"
+          >
+            {!messages.length && (
+              <div
+                style={{
+                  backgroundColor: "color-mix(in srgb, #2D6A4F 8%, var(--surface, #ffffff))",
+                  borderColor: "color-mix(in srgb, #2D6A4F 18%, var(--border, rgba(23,37,29,0.1)))",
+                }}
+                className="rounded-2xl border p-4 text-sm leading-6 text-[var(--text-primary,#17251D)] shadow-2xs"
+              >
+                Consulta sobre trazabilidad, documentación, el resumen operativo o el lote seleccionado. Cada pregunta se evalúa con el contexto actual; no se envía el historial de la conversación.
+              </div>
+            )}
+
+            {messages.map((message, index) => (
+              <div key={index} className={`flex items-end gap-2.5 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                {message.role === "assistant" && <AssistantAvatar size="sm" />}
+                <div
+                  style={
+                    message.role === "assistant"
+                      ? {
+                          backgroundColor: "color-mix(in srgb, #2D6A4F 8%, var(--surface, #ffffff))",
+                          borderColor: "color-mix(in srgb, #2D6A4F 18%, var(--border, rgba(23,37,29,0.12)))",
+                        }
+                      : undefined
+                  }
+                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6 shadow-2xs ${
+                    message.role === "user"
+                      ? "rounded-br-sm bg-gradient-to-br from-[#1B4332] to-[#2D6A4F] text-white"
+                      : "rounded-bl-sm border text-[var(--text-primary,#17251D)]"
+                  }`}
+                >
+                  <span
+                    className={`mb-1 block text-[11px] font-bold ${
+                      message.role === "user"
+                        ? "text-emerald-200"
+                        : "text-[#2D6A4F] dark:text-emerald-400 [[data-theme=dark]_&]:text-emerald-400"
+                    }`}
+                  >
+                    {message.role === "user" ? "Tú" : "Asistente · Gemini"}
+                  </span>
+                  {message.text}
+                </div>
+              </div>
+            ))}
+
+            {/* ANIMACIÓN DE PENSANDO / ESPERANDO RESPUESTA */}
+            {busy && (
+              <div role="status" className="flex items-end gap-2.5">
+                <AssistantAvatar busy size="sm" />
+                <div
+                  style={{
+                    backgroundColor: "color-mix(in srgb, #2D6A4F 8%, var(--surface, #ffffff))",
+                    borderColor: "color-mix(in srgb, #2D6A4F 22%, var(--border, rgba(23,37,29,0.12)))",
+                  }}
+                  className="inline-flex items-center gap-3 rounded-2xl rounded-bl-sm border px-4 py-3 text-xs font-medium text-[var(--text-primary,#17251D)] shadow-2xs"
+                >
+                  <span className="flex items-center gap-1" aria-hidden="true">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#2D6A4F] [animation-delay:-0.3s] dark:bg-emerald-400 [[data-theme=dark]_&]:bg-emerald-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#2D6A4F] [animation-delay:-0.15s] dark:bg-emerald-400 [[data-theme=dark]_&]:bg-emerald-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#2D6A4F] dark:bg-emerald-400 [[data-theme=dark]_&]:bg-emerald-400" />
+                  </span>
+                  <span>Analizando datos operativos…</span>
+                </div>
+              </div>
+            )}
+
+            {hasNewMessages && (
+              <div className="sticky bottom-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    stick.current = true;
+                    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+                    setHasNewMessages(false);
+                  }}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-[#1B4332] px-3.5 text-xs font-semibold text-white shadow-md outline-none transition hover:bg-[#2D6A4F] focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2"
+                >
+                  <ChevronDown size={15} /> Mensajes nuevos
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* CAJA DE ENTRADA DE CONSULTA */}
+          <form
+            onSubmit={(event) => void submit(event)}
+            style={{ borderColor: "var(--border, rgba(23,37,29,0.12))" }}
+            className="shrink-0 border-t bg-[var(--surface,#ffffff)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4"
+          >
+            {error && (
+              <p role="alert" className="mb-3 rounded-xl border border-red-300/50 bg-red-500/10 p-3 text-xs font-medium text-red-700 dark:text-red-300 [[data-theme=dark]_&]:text-red-300">
+                {error} Puedes corregir o reintentar la consulta; tu texto se conserva.
+              </p>
+            )}
+            <label htmlFor={inputId} className="sr-only">
+              Tu consulta
+            </label>
+            <div className="flex items-end gap-2">
+              <textarea
+                id={inputId}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={keyDown}
+                rows={2}
+                maxLength={1000}
+                disabled={busy}
+                placeholder="Escribe tu consulta…"
+                className="max-h-32 min-h-12 min-w-0 flex-1 resize-y rounded-2xl border border-[#526157]/30 bg-field p-3 text-sm text-[var(--text-primary,#17251D)] shadow-inner outline-none placeholder:text-[var(--text-secondary,#526157)] focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/20 disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={busy || !draft.trim()}
+                aria-label="Enviar consulta"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4332] to-[#2D6A4F] text-white shadow-md outline-none transition hover:scale-105 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-[#2D6A4F] focus-visible:ring-offset-2 disabled:scale-100 disabled:bg-[#E8EEE7] disabled:bg-none disabled:text-[#526157] disabled:shadow-none"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-[var(--text-secondary,#526157)]">
+              Enter envía · Shift+Enter agrega línea. La IA no consulta normativa vigente ni autoriza aplicaciones o despachos. No incluyas datos personales.
+            </p>
+          </form>
+        </>
+      )}
+    </section>
+  );
 }

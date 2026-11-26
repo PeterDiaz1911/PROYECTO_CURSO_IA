@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { AlertCircle, ArrowDownWideNarrow, Bot, CalendarDays, ChevronLeft, ChevronRight, Download, Eye, FileText, Filter, Leaf, Package, RefreshCw, Search, ShieldCheck, Users, Warehouse, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { GeminiChat } from "@/features/assistant/GeminiChat";
-import { ChartCard, ChartEmpty, ChartError, ChartLoading, DashboardLegend, DashboardMetric, DashboardTooltip, chartColors } from "@/features/dashboards/DashboardCharts";
+import { ChartCard, ChartEmpty, ChartError, ChartLoading, DashboardLegend, DashboardTooltip, chartColors } from "@/features/dashboards/DashboardCharts";
 import { categoryColor, comparePeriodCounts, dashboardSinceDate, dashboardStatuses, dashboardStatusConfig, dateKeyInLima, getRegistrationSeries, shiftDateKey, type DashboardLot, type DashboardPeriod, type DashboardStatus } from "@/features/gerencia/dashboard-data";
 import { dashboardCsvFilename, dashboardLotsCsv } from "@/features/gerencia/dashboard-export";
+import { KpiCard } from "@/components/ui/kpi-card";
 
 type DashboardRole = "ADMIN" | "SUPERVISOR" | "OPERADOR";
 type LotRecord = DashboardLot & { destino: string | null; creado_por: string };
@@ -350,7 +352,7 @@ export function RoleAnalyticsDashboard({ role }: { role: DashboardRole }) {
 
   return <section className="space-y-5" aria-labelledby="role-dashboard-title">
     <PageHeader role={role} copy={roleHeading} updatedAt={updatedAt} onRefresh={() => setRefresh((value) => value + 1)} loading={loading} actionHref={actionHref} actionLabel={actionLabel} onExport={exportFilteredLots} exportDisabled={loading || sortedLots.length === 0} />
-    <div className="space-y-3 rounded-2xl border border-[#17251D]/10 bg-white p-4">
+  <div className="space-y-3 rounded-2xl border border-[#17251D]/10 bg-[var(--surface)] p-4 shadow-sm backdrop-blur-sm">
       <div className="flex items-center justify-between gap-3 sm:hidden">
         <p className="text-sm font-semibold text-[#17251D]">{activeFilterCount ? `${activeFilterCount} filtros activos` : "Sin filtros adicionales"}</p>
         <Button type="button" variant="outline" aria-expanded={filtersOpen} aria-controls="dashboard-filters" onClick={() => setFiltersOpen((open) => !open)} className="min-h-10 rounded-xl"><Filter size={16} /> Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</Button>
@@ -377,34 +379,185 @@ export function RoleAnalyticsDashboard({ role }: { role: DashboardRole }) {
         <Button type="button" variant="ghost" className="min-h-9 px-2 text-xs" onClick={() => { setSearch(""); setPeriod("30d"); setCustomStart(shiftDateKey(today, -29)); setCustomEnd(today); setStatus("ALL"); setCrop("ALL"); setFarm("ALL"); setDestination("ALL"); setDataMode("ALL"); }}>Limpiar filtros</Button>
       </div>}
     </div>
-    {rangeInvalid && <p role="alert" className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Revisa el rango personalizado: la fecha inicial debe ser anterior o igual a la fecha final.</p>}
-    {demoNotice && <p role="note" className="border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">{demoNotice} Los gráficos los incluyen porque el filtro de origen está en “Reales y DEMO”.</p>}
-    <p className="text-xs text-[#526157]">{roleHeading.scope} · Zona horaria: America/Lima · Período: {tableDateLabel} · Fechas por registro (created_at); los estados son actuales · {fmt(currentLots.length)} resultados autorizados</p>
+    {rangeInvalid && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Revisa el rango personalizado: la fecha inicial debe ser anterior o igual a la fecha final.</p>}
+   {demoNotice && (
+  <p
+    role="note"
+    style={{
+      backgroundColor: "color-mix(in srgb, #f59e0b 14%, var(--surface, #ffffff))",
+      borderColor: "color-mix(in srgb, #f59e0b 35%, var(--border, rgba(23,37,29,0.12)))",
+      color: "var(--text-primary)",
+    }}
+    className="rounded-xl border px-4 py-2.5 text-xs font-medium"
+  >
+    {demoNotice} Los gráficos los incluyen porque el filtro de origen está en “Reales y DEMO”.
+  </p>
+)}
 
-    <div className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-3 ${role === "ADMIN" ? "2xl:grid-cols-6" : "2xl:grid-cols-5"}`}>
+    {/* TARJETAS KPI RENOVADAS PARA LOS 3 ROLES */}
+    <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 ${role === "ADMIN" ? "2xl:grid-cols-6" : "2xl:grid-cols-5"}`}>
       {role === "ADMIN" ? <>
-        <DashboardMetric label="Lotes registrados" value={loading ? "…" : fmt(currentLots.length)} unit={loading ? undefined : "lotes"} detail="Dentro de todos los filtros activos" icon={Package} comparison={!loading && comparison ? totalChange.label : undefined} />
-        <DashboardMetric label="Pendientes de autorización" value={loading ? "…" : fmt(pendingCount)} unit={loading ? undefined : "lotes"} detail="Lotes en estado Pendiente de firma" icon={Warehouse} comparison={!loading && comparison ? comparePeriodCounts(pendingCount, previousPending).label : undefined} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} />
-        <DashboardMetric label="Aprobados" value={loading ? "…" : fmt(countState(currentLots, "APROBADO"))} unit={loading ? undefined : "lotes"} detail="Lotes actualmente aprobados en el período y filtros." icon={ShieldCheck} tone="approved" onClick={() => setStatus(status === "APROBADO" ? "ALL" : "APROBADO")} />
-        <DashboardMetric label="Tasa de aprobación" value={loading ? "…" : approvalRate === null ? "—" : `${approvalRate}%`} unit={loading || approvalRate === null ? undefined : "de resueltos"} detail={loading ? "Calculando aprobados / (aprobados + rechazados)" : approvalRateDetail} icon={ShieldCheck} onClick={() => setStatus("ALL")} />
-        <DashboardMetric label="Rechazados" value={loading ? "…" : fmt(countState(currentLots, "RECHAZADO"))} unit={loading ? undefined : "lotes"} detail="Rechazos dentro de los filtros activos" icon={AlertCircle} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} />
-        <DashboardMetric label="Documentos asociados" value={loading ? "…" : documentsError ? "—" : fmt(documentsInPeriod)} unit={loading || documentsError ? undefined : "documentos"} detail={documentsError ? `Error al cargar: ${documentsError}` : "Adjuntos a los lotes filtrados"} icon={FileText} />
+        <KpiCard
+          title="Lotes registrados"
+          value={loading ? "…" : fmt(currentLots.length)}
+          unit={loading ? undefined : "lotes"}
+          description="Dentro de todos los filtros activos"
+          trend={!loading && comparison ? totalChange.label : undefined}
+          tone="emerald"
+          icon={Package}
+        />
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA"); }} className="cursor-pointer">
+          <KpiCard
+            title="Pendientes de autorización"
+            value={loading ? "…" : fmt(pendingCount)}
+            unit={loading ? undefined : "lotes"}
+            description="Lotes en estado Pendiente de firma"
+            trend={!loading && comparison ? comparePeriodCounts(pendingCount, previousPending).label : undefined}
+            tone="amber"
+            icon={Warehouse}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "APROBADO" ? "ALL" : "APROBADO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "APROBADO" ? "ALL" : "APROBADO"); }} className="cursor-pointer">
+          <KpiCard
+            title="Aprobados"
+            value={loading ? "…" : fmt(countState(currentLots, "APROBADO"))}
+            unit={loading ? undefined : "lotes"}
+            description="Lotes actualmente aprobados en el período y filtros."
+            tone="emerald"
+            icon={ShieldCheck}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus("ALL")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus("ALL"); }} className="cursor-pointer">
+          <KpiCard
+            title="Tasa de aprobación"
+            value={loading ? "…" : approvalRate === null ? "—" : `${approvalRate}%`}
+            unit={loading || approvalRate === null ? undefined : "de resueltos"}
+            description={loading ? "Calculando aprobados / (aprobados + rechazados)" : approvalRateDetail}
+            tone={approvalRate !== null && approvalRate < 50 ? "rose" : "emerald"}
+            icon={ShieldCheck}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO"); }} className="cursor-pointer">
+          <KpiCard
+            title="Rechazados"
+            value={loading ? "…" : fmt(countState(currentLots, "RECHAZADO"))}
+            unit={loading ? undefined : "lotes"}
+            description="Rechazos dentro de los filtros activos"
+            tone="rose"
+            icon={AlertCircle}
+          />
+        </div>
+        <KpiCard
+          title="Documentos asociados"
+          value={loading ? "…" : documentsError ? "—" : fmt(documentsInPeriod)}
+          unit={loading || documentsError ? undefined : "documentos"}
+          description={documentsError ? `Error al cargar: ${documentsError}` : "Adjuntos a los lotes filtrados"}
+          tone="sky"
+          icon={FileText}
+          showSparkline={false}
+        />
       </> : role === "SUPERVISOR" ? <>
-        <DashboardMetric label="Lotes bajo supervisión" value={loading ? "…" : fmt(currentLots.length)} unit={loading ? undefined : "lotes"} detail="Con filtros y período seleccionados" icon={Package} comparison={!loading && comparison ? totalChange.label : undefined} />
-        <DashboardMetric label="Pendientes de recepción" value={loading ? "…" : fmt(countState(currentLots, "EN_CAMPO"))} unit={loading ? undefined : "lotes"} detail="Estado EN_CAMPO" icon={Warehouse} onClick={() => setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO")} />
-        <DashboardMetric label="En Packing" value={loading ? "…" : fmt(countState(currentLots, "EN_PACKING"))} unit={loading ? undefined : "lotes"} detail="Estado EN_PACKING" icon={Leaf} onClick={() => setStatus(status === "EN_PACKING" ? "ALL" : "EN_PACKING")} />
-        <DashboardMetric label="Enviados a Gerencia" value={loading ? "…" : dispatchError ? "—" : fmt(dispatchesPendingReview)} unit={loading || dispatchError ? undefined : "despachos"} detail={dispatchError ? "Historial no disponible; verifica la migración del flujo." : "Despachos pendientes dentro del período y filtros"} icon={ShieldCheck} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} />
-        <DashboardMetric label="Devueltos" value={loading ? "…" : dispatchError ? "—" : fmt(dispatchesReturned)} unit={loading || dispatchError ? undefined : "despachos"} detail={dispatchError ? "Historial no disponible; verifica la migración del flujo." : "Decisiones RECHAZADO registradas por Gerencia"} icon={AlertCircle} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} />
+        <KpiCard
+          title="Lotes bajo supervisión"
+          value={loading ? "…" : fmt(currentLots.length)}
+          unit={loading ? undefined : "lotes"}
+          description="Con filtros y período seleccionados"
+          trend={!loading && comparison ? totalChange.label : undefined}
+          tone="emerald"
+          icon={Package}
+        />
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO"); }} className="cursor-pointer">
+          <KpiCard
+            title="Pendientes de recepción"
+            value={loading ? "…" : fmt(countState(currentLots, "EN_CAMPO"))}
+            unit={loading ? undefined : "lotes"}
+            description="Estado EN_CAMPO"
+            tone="amber"
+            icon={Warehouse}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "EN_PACKING" ? "ALL" : "EN_PACKING")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "EN_PACKING" ? "ALL" : "EN_PACKING"); }} className="cursor-pointer">
+          <KpiCard
+            title="En Packing"
+            value={loading ? "…" : fmt(countState(currentLots, "EN_PACKING"))}
+            unit={loading ? undefined : "lotes"}
+            description="Estado EN_PACKING"
+            tone="sky"
+            icon={Leaf}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA"); }} className="cursor-pointer">
+          <KpiCard
+            title="Enviados a Gerencia"
+            value={loading ? "…" : dispatchError ? "—" : fmt(dispatchesPendingReview)}
+            unit={loading || dispatchError ? undefined : "despachos"}
+            description={dispatchError ? "Historial no disponible; verifica la migración del flujo." : "Despachos pendientes dentro del período y filtros"}
+            tone="emerald"
+            icon={ShieldCheck}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO"); }} className="cursor-pointer">
+          <KpiCard
+            title="Devueltos"
+            value={loading ? "…" : dispatchError ? "—" : fmt(dispatchesReturned)}
+            unit={loading || dispatchError ? undefined : "despachos"}
+            description={dispatchError ? "Historial no disponible; verifica la migración del flujo." : "Decisiones RECHAZADO registradas por Gerencia"}
+            tone="rose"
+            icon={AlertCircle}
+          />
+        </div>
       </> : <>
-        <DashboardMetric label="Mis lotes registrados" value={loading ? "…" : fmt(currentLots.length)} unit={loading ? undefined : "lotes"} detail="Solo registros visibles para tu cuenta" icon={Package} comparison={!loading && comparison ? totalChange.label : undefined} />
-        <DashboardMetric label="En tránsito a Packing" value={loading ? "…" : fmt(countState(currentLots, "EN_CAMPO"))} unit={loading ? undefined : "lotes"} detail="Estado EN_CAMPO" icon={Warehouse} onClick={() => setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO")} />
-        <DashboardMetric label="Pendientes de firma" value={loading ? "…" : fmt(countState(currentLots, "PENDIENTE_FIRMA"))} unit={loading ? undefined : "lotes"} detail="Estado PENDIENTE_FIRMA" icon={ShieldCheck} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} />
-        <DashboardMetric label="Devueltos" value={loading ? "…" : fmt(countState(currentLots, "RECHAZADO"))} unit={loading ? undefined : "lotes"} detail="Pendiente de corrección según el estado actual" icon={AlertCircle} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} />
-        <DashboardMetric label="Promedio diario" value={loading ? "…" : averagePerDay.toFixed(1)} unit={loading ? undefined : "lotes/día"} detail={`Calculado sobre ${fmt(coverageDays)} días del período`} icon={CalendarDays} />
+        <KpiCard
+          title="Mis lotes registrados"
+          value={loading ? "…" : fmt(currentLots.length)}
+          unit={loading ? undefined : "lotes"}
+          description="Solo registros visibles para tu cuenta"
+          trend={!loading && comparison ? totalChange.label : undefined}
+          tone="emerald"
+          icon={Package}
+        />
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "EN_CAMPO" ? "ALL" : "EN_CAMPO"); }} className="cursor-pointer">
+          <KpiCard
+            title="En tránsito a Packing"
+            value={loading ? "…" : fmt(countState(currentLots, "EN_CAMPO"))}
+            unit={loading ? undefined : "lotes"}
+            description="Estado EN_CAMPO"
+            tone="sky"
+            icon={Warehouse}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "PENDIENTE_FIRMA" ? "ALL" : "PENDIENTE_FIRMA"); }} className="cursor-pointer">
+          <KpiCard
+            title="Pendientes de firma"
+            value={loading ? "…" : fmt(countState(currentLots, "PENDIENTE_FIRMA"))}
+            unit={loading ? undefined : "lotes"}
+            description="Estado PENDIENTE_FIRMA"
+            tone="amber"
+            icon={ShieldCheck}
+          />
+        </div>
+        <div role="button" tabIndex={0} onClick={() => setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setStatus(status === "RECHAZADO" ? "ALL" : "RECHAZADO"); }} className="cursor-pointer">
+          <KpiCard
+            title="Devueltos"
+            value={loading ? "…" : fmt(countState(currentLots, "RECHAZADO"))}
+            unit={loading ? undefined : "lotes"}
+            description="Pendiente de corrección según el estado actual"
+            tone="rose"
+            icon={AlertCircle}
+          />
+        </div>
+        <KpiCard
+          title="Promedio diario"
+          value={loading ? "…" : averagePerDay.toFixed(1)}
+          unit={loading ? undefined : "lotes/día"}
+          description={`Calculado sobre ${fmt(coverageDays)} días del período`}
+          tone="emerald"
+          icon={CalendarDays}
+        />
       </>}
     </div>
 
-    {role === "ADMIN" && <section className="space-y-3" aria-labelledby="admin-users-metrics-title"><div><h2 id="admin-users-metrics-title" className="text-lg font-bold text-[#17251D]">Accesos de usuarios</h2><p className="mt-1 text-xs text-[#526157]">Indicadores administrativos separados de los gráficos de lotes.</p></div>{usersError ? <p role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-900">No se pudieron cargar usuarios: {usersError}</p> : <div className="grid gap-3 sm:grid-cols-2"><DashboardMetric label="Usuarios activos" value={fmt(users.filter((user) => user.is_active).length)} unit="cuentas" detail="Perfiles con acceso habilitado" icon={Users} /><DashboardMetric label="Usuarios no habilitados" value={fmt(users.filter((user) => !user.is_active).length)} unit="cuentas" detail="Perfiles sin acceso activo; el sistema no distingue espera de desactivación." icon={Users} /></div>}</section>}
+    {role === "ADMIN" && <section className="space-y-3" aria-labelledby="admin-users-metrics-title"><div><h2 id="admin-users-metrics-title" className="text-lg font-bold text-[#17251D]">Accesos de usuarios</h2><p className="mt-1 text-xs text-[#526157]">Indicadores administrativos separados de los gráficos de lotes.</p></div>{usersError ? <p role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-900">No se pudieron cargar usuarios: {usersError}</p> : <div className="grid gap-4 sm:grid-cols-2"><KpiCard title="Usuarios activos" value={fmt(users.filter((user) => user.is_active).length)} unit="cuentas" description="Perfiles con acceso habilitado" tone="emerald" icon={Users} showSparkline={false} /><KpiCard title="Usuarios no habilitados" value={fmt(users.filter((user) => !user.is_active).length)} unit="cuentas" description="Perfiles sin acceso activo; el sistema no distingue espera de desactivación." tone="amber" icon={Users} showSparkline={false} /></div>}</section>}
 
     <SectionHeading title="Actividad y prioridades" description="Evolución de registros junto a accesos accionables para el rol." />
     {loading ? <ChartLoading /> : currentLots.length === 0 ? <ChartEmpty label={lots.length ? "No hay coincidencias para el período y filtros seleccionados." : "No hay historial autorizado para graficar."} /> : <>
